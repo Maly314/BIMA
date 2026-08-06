@@ -30,6 +30,7 @@ dev.stderr.log
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
 
 # env files (can opt-in for committing if needed)
 .env*
@@ -39,7 +40,34 @@ yarn-error.log*
 
 # typescript
 next-env.d.ts
+*.tsbuildinfo
 /dist/
 /.wrangler/
 /outputs/
 /work/
+/.tools/
+
+# local editor/agent state
+/.claude/
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# downloaded datasets and generated experiment output
+/pose-research/data/
+/pose-research/runs/
+/synthetic-data/100hz/
+/synthetic-data/10hz_legacy/
+
+# Teensy/Arduino compiler output
+/handoff/**/build-cli*/
+/handoff/**/build/
+
+# locally captured clinical/research sessions
+/recordings/
+/captures/
+*.webm
+*.mp4
+*.mov
+*.avi

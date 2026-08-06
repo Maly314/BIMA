@@ -1,0 +1,138 @@
+{
+  "purpose": "Exploratory adult sustained-shakiness window classifier with artifact hard negatives",
+  "labels": {
+    "0": "not_shaky_or_artifact",
+    "1": "sustained_shaky"
+  },
+  "feature_version": 2,
+  "window_samples": 50,
+  "window_stride": 10,
+  "derived_channels": [
+    "s1_accel_motion",
+    "s2_accel_motion",
+    "s1_gyro_motion",
+    "s2_gyro_motion"
+  ],
+  "training_windows": {
+    "shaky": 30,
+    "mostly_still": 27,
+    "artifact": 98
+  },
+  "recording_balanced_weights": true,
+  "within_recording_validation_accuracy": 1.0,
+  "within_recording_confusion_matrix": [
+    [
+      125,
+      0
+    ],
+    [
+      0,
+      30
+    ]
+  ],
+  "artifact_holdout_before_inclusion": {
+    "windows": 98,
+    "false_positive_rate_at_0_5": 0.0102,
+    "mean_shaky_probability": 0.1305,
+    "max_shaky_probability": 0.5094
+  },
+  "data_profiles": {
+    "shaky": {
+      "rows": 349,
+      "duration_s": 34.8,
+      "median_sample_interval_s": 0.1,
+      "gaps_over_0_15_s": 0,
+      "normalization": {
+        "s1": {
+          "gravity_reference": 9.960914,
+          "acceleration_floor": 0.012408,
+          "gyro_bias": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "gyro_floor": 0.049603
+        },
+        "s2": {
+          "gravity_reference": 9.874395,
+          "acceleration_floor": 0.007997,
+          "gyro_bias": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "gyro_floor": 0.0
+        }
+      }
+    },
+    "mostly_still": {
+      "rows": 314,
+      "duration_s": 31.3,
+      "median_sample_interval_s": 0.1,
+      "gaps_over_0_15_s": 0,
+      "normalization": {
+        "s1": {
+          "gravity_reference": 9.932482,
+          "acceleration_floor": 0.005883,
+          "gyro_bias": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "gyro_floor": 0.0
+        },
+        "s2": {
+          "gravity_reference": 9.877563,
+          "acceleration_floor": 0.004264,
+          "gyro_bias": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "gyro_floor": 0.0
+        }
+      }
+    },
+    "artifact": {
+      "rows": 1029,
+      "duration_s": 102.8,
+      "median_sample_interval_s": 0.1,
+      "gaps_over_0_15_s": 0,
+      "normalization": {
+        "s1": {
+          "gravity_reference": 9.946532,
+          "acceleration_floor": 0.004571,
+          "gyro_bias": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "gyro_floor": 0.0
+        },
+        "s2": {
+          "gravity_reference": 9.87267,
+          "acceleration_floor": 0.004019,
+          "gyro_bias": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "gyro_floor": 0.0
+        }
+      }
+    }
+  },
+  "important_caveat": "Cross-validation uses overlapping windows from the same recordings and is optimistic. Artifact holdout tests only one independent negative recording. This is not performance on a new person, placement, sensor set, or clinical population.",
+  "inputs": {
+    "shaky": "C:\\Users\\mwstr\\Downloads\\movement-sensors-1784658505915.csv",
+    "mostly_still": "C:\\Users\\mwstr\\Downloads\\movement-sensors-1784658593112.csv",
+    "artifact": "C:\\Users\\mwstr\\Downloads\\patient-3-susp-wk1-sensors.csv"
+  },
+  "artifact_after_inclusion_training_score": {
+    "windows": 98,
+    "false_positive_rate_at_0_5": 0.0,
+    "mean_shaky_probability": 0.0245,
+    "max_shaky_probability": 0.094,
+    "caveat": "This score is measured on the artifact recording after it was included in training."
+  }
+}

@@ -1,0 +1,15 @@
+.page { min-height:100vh; display:grid; place-items:center; padding:24px; background:#f2f4f3; color:#172126; }
+.card { width:min(520px,100%); padding:28px; border:1px solid #cfd6d5; border-radius:14px; background:white; box-shadow:0 16px 50px rgba(23,43,47,.09); text-align:center; }
+.top { display:flex; align-items:center; justify-content:space-between; color:#697579; font-size:13px; text-align:left; }
+.top i { width:10px; height:10px; border-radius:50%; background:#b7c0c1; }
+.top i.on { background:#159252; box-shadow:0 0 0 5px rgba(21,146,82,.11); }
+.result { display:grid; place-items:center; min-height:190px; margin:22px 0 16px; border:1px solid #d9dfe0; border-radius:10px; background:#f7f9f9; color:#687477; font-size:clamp(32px,8vw,58px); font-weight:720; letter-spacing:-.04em; }
+.result.shaky { border-color:#e0ada0; background:#fff3f0; color:#b33d26; }
+.result.not-shaky { border-color:#a8d8c1; background:#f0faf5; color:#177148; }
+.result.reading { color:#087b83; }
+.card p { min-height:20px; margin:0 0 14px; color:#697579; font-size:13px; }
+.progress { height:5px; margin:0 0 16px; overflow:hidden; border-radius:5px; background:#e2e8e8; }
+.progress i { display:block; height:100%; border-radius:5px; background:#07808a; transition:width .12s linear; }
+.card button { width:100%; border:0; border-radius:8px; padding:13px 18px; background:#007b84; color:white; font:inherit; font-weight:650; cursor:pointer; }
+.card button:hover { background:#006b73; }
+.card small { display:block; margin-top:14px; color:#8a9496; font-size:11px; }

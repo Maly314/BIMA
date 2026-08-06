@@ -1,0 +1,234 @@
+{
+  "synthetic": true,
+  "clinical_ground_truth": false,
+  "sample_rates_hz": {
+    "ground_truth": 100,
+    "legacy_app_view": 10
+  },
+  "duration_s": 30,
+  "seed": 20948,
+  "assumptions": {
+    "fine_tremor_frequency_hz": [
+      6.5,
+      8.5
+    ],
+    "fine_tremor_displacement_m": [
+      0.00025,
+      0.00085
+    ],
+    "still_movement_target_m_s2": "99th percentile below 0.12",
+    "warning": "Amplitude range is an engineering stress-test assumption because published neonatal IMU amplitude distributions were not found."
+  },
+  "scenarios": [
+    {
+      "name": "still_threshold",
+      "expected": "not_shaky",
+      "description": "Quiet sensor noise, small bias drift, and sub-threshold incubator sway.",
+      "events": [],
+      "metrics_100hz": {
+        "rows_100hz": 3000,
+        "movement_p50": 0.0,
+        "movement_p99": 0.0,
+        "gyro_p99_rad_s": 0.0063,
+        "dominant_raw_accel_1_20hz_sensor1": 4.9
+      }
+    },
+    {
+      "name": "fine_tremor_low",
+      "expected": "shaky",
+      "description": "Low-amplitude, narrow-band 6.5-8.5 Hz tremor with slow amplitude/frequency drift.",
+      "events": [
+        {
+          "start_s": 2,
+          "end_s": 28,
+          "type": "fine_tremor"
+        }
+      ],
+      "metrics_100hz": {
+        "rows_100hz": 3000,
+        "movement_p50": 0.4361,
+        "movement_p99": 1.2017,
+        "gyro_p99_rad_s": 0.4797,
+        "dominant_raw_accel_1_20hz_sensor1": 7.033
+      }
+    },
+    {
+      "name": "fine_tremor_intermittent",
+      "expected": "shaky_during_events",
+      "description": "Three short fine-tremor bouts separated by genuine stillness.",
+      "events": [
+        {
+          "start_s": 3,
+          "end_s": 7,
+          "type": "fine_tremor"
+        },
+        {
+          "start_s": 12,
+          "end_s": 17,
+          "type": "fine_tremor"
+        },
+        {
+          "start_s": 22,
+          "end_s": 27,
+          "type": "fine_tremor"
+        }
+      ],
+      "metrics_100hz": {
+        "rows_100hz": 3000,
+        "movement_p50": 0.0,
+        "movement_p99": 0.4818,
+        "gyro_p99_rad_s": 0.3233,
+        "dominant_raw_accel_1_20hz_sensor1": 8.267
+      }
+    },
+    {
+      "name": "spontaneous_movement",
+      "expected": "not_shaky",
+      "description": "Irregular, asymmetric smooth limb-movement bouts without sustained periodicity.",
+      "events": [
+        {
+          "start_s": 2,
+          "end_s": 28,
+          "type": "irregular_spontaneous_movement"
+        }
+      ],
+      "metrics_100hz": {
+        "rows_100hz": 3000,
+        "movement_p50": 0.0,
+        "movement_p99": 0.7427,
+        "gyro_p99_rad_s": 0.6427,
+        "dominant_raw_accel_1_20hz_sensor1": 1.167
+      }
+    },
+    {
+      "name": "caregiver_handling",
+      "expected": "artifact",
+      "description": "Large low-frequency, strongly bilateral common-mode handling/repositioning.",
+      "events": [
+        {
+          "start_s": 7,
+          "end_s": 18,
+          "type": "caregiver_handling"
+        }
+      ],
+      "metrics_100hz": {
+        "rows_100hz": 3000,
+        "movement_p50": 0.0,
+        "movement_p99": 0.7168,
+        "gyro_p99_rad_s": 1.0979,
+        "dominant_raw_accel_1_20hz_sensor1": 1.033
+      }
+    },
+    {
+      "name": "bed_impact",
+      "expected": "artifact",
+      "description": "Brief shared impulses with damped mechanical ring-down.",
+      "events": [
+        {
+          "start_s": 8,
+          "end_s": 8.8,
+          "type": "bed_impact"
+        },
+        {
+          "start_s": 18,
+          "end_s": 18.8,
+          "type": "bed_impact"
+        },
+        {
+          "start_s": 24,
+          "end_s": 24.8,
+          "type": "bed_impact"
+        }
+      ],
+      "metrics_100hz": {
+        "rows_100hz": 3000,
+        "movement_p50": 0.0,
+        "movement_p99": 1.2509,
+        "gyro_p99_rad_s": 0.3841,
+        "dominant_raw_accel_1_20hz_sensor1": 17.067
+      }
+    },
+    {
+      "name": "sensor_slip",
+      "expected": "artifact",
+      "description": "One-sensor orientation step with a short attachment transient.",
+      "events": [
+        {
+          "start_s": 12,
+          "end_s": 12.8,
+          "type": "sensor_slip_transient"
+        },
+        {
+          "start_s": 12,
+          "end_s": 30,
+          "type": "orientation_offset"
+        }
+      ],
+      "metrics_100hz": {
+        "rows_100hz": 3000,
+        "movement_p50": 0.0,
+        "movement_p99": 0.0713,
+        "gyro_p99_rad_s": 0.0427,
+        "dominant_raw_accel_1_20hz_sensor1": 1.033
+      }
+    },
+    {
+      "name": "cable_vibration",
+      "expected": "artifact",
+      "description": "Short high-frequency vibration isolated to one sensor.",
+      "events": [
+        {
+          "start_s": 10,
+          "end_s": 13,
+          "type": "cable_vibration"
+        }
+      ],
+      "metrics_100hz": {
+        "rows_100hz": 3000,
+        "movement_p50": 0.0,
+        "movement_p99": 0.0216,
+        "gyro_p99_rad_s": 0.6175,
+        "dominant_raw_accel_1_20hz_sensor1": 19.867
+      }
+    },
+    {
+      "name": "mixed_artifacts",
+      "expected": "artifact",
+      "description": "Stillness plus handling, two impacts, sensor slip, and cable vibration.",
+      "events": [
+        {
+          "start_s": 4,
+          "end_s": 10,
+          "type": "handling"
+        },
+        {
+          "start_s": 14,
+          "end_s": 14.8,
+          "type": "impact"
+        },
+        {
+          "start_s": 17,
+          "end_s": 30,
+          "type": "sensor_slip"
+        },
+        {
+          "start_s": 22,
+          "end_s": 22.8,
+          "type": "impact"
+        },
+        {
+          "start_s": 25,
+          "end_s": 27,
+          "type": "cable_vibration"
+        }
+      ],
+      "metrics_100hz": {
+        "rows_100hz": 3000,
+        "movement_p50": 0.0,
+        "movement_p99": 0.1642,
+        "gyro_p99_rad_s": 0.6971,
+        "dominant_raw_accel_1_20hz_sensor1": 17.067
+      }
+    }
+  ]
+}

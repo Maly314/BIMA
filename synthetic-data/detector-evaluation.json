@@ -1,0 +1,87 @@
+{
+  "input_rate_hz": 100,
+  "window_s": 2,
+  "warning": "Synthetic-fixture performance is not clinical performance.",
+  "scenarios": [
+    {
+      "name": "still_threshold",
+      "windows": 281,
+      "expected_tremor_windows": 0,
+      "flagged_windows": 0,
+      "flagged_fraction": 0.0,
+      "accuracy_against_event_labels": 1.0
+    },
+    {
+      "name": "fine_tremor_low",
+      "windows": 281,
+      "expected_tremor_windows": 260,
+      "flagged_windows": 281,
+      "flagged_fraction": 1.0,
+      "accuracy_against_event_labels": 0.9253
+    },
+    {
+      "name": "fine_tremor_intermittent",
+      "windows": 281,
+      "expected_tremor_windows": 140,
+      "flagged_windows": 202,
+      "flagged_fraction": 0.7189,
+      "accuracy_against_event_labels": 0.7794
+    },
+    {
+      "name": "spontaneous_movement",
+      "windows": 281,
+      "expected_tremor_windows": 0,
+      "flagged_windows": 0,
+      "flagged_fraction": 0.0,
+      "accuracy_against_event_labels": 1.0
+    },
+    {
+      "name": "caregiver_handling",
+      "windows": 281,
+      "expected_tremor_windows": 0,
+      "flagged_windows": 0,
+      "flagged_fraction": 0.0,
+      "accuracy_against_event_labels": 1.0
+    },
+    {
+      "name": "bed_impact",
+      "windows": 281,
+      "expected_tremor_windows": 0,
+      "flagged_windows": 0,
+      "flagged_fraction": 0.0,
+      "accuracy_against_event_labels": 1.0
+    },
+    {
+      "name": "sensor_slip",
+      "windows": 281,
+      "expected_tremor_windows": 0,
+      "flagged_windows": 0,
+      "flagged_fraction": 0.0,
+      "accuracy_against_event_labels": 1.0
+    },
+    {
+      "name": "cable_vibration",
+      "windows": 281,
+      "expected_tremor_windows": 0,
+      "flagged_windows": 0,
+      "flagged_fraction": 0.0,
+      "accuracy_against_event_labels": 1.0
+    },
+    {
+      "name": "mixed_artifacts",
+      "windows": 281,
+      "expected_tremor_windows": 0,
+      "flagged_windows": 0,
+      "flagged_fraction": 0.0,
+      "accuracy_against_event_labels": 1.0
+    }
+  ],
+  "confusion": {
+    "tp": 400,
+    "tn": 2046,
+    "fp": 83,
+    "fn": 0
+  },
+  "synthetic_tremor_recall": 1.0,
+  "synthetic_artifact_still_specificity": 0.961
+}

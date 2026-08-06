@@ -1,0 +1,92 @@
+.scene {
+  position:relative;
+  width:100%;
+  height:92px;
+  overflow:hidden;
+  border:1px solid #26343a;
+  border-radius:9px;
+  background:
+    radial-gradient(ellipse at 50% 36%, rgba(64,86,91,.46), transparent 50%),
+    linear-gradient(155deg,#172126,#0c1215 78%);
+  perspective:760px;
+  perspective-origin:50% 38%;
+}
+.scene::after { content:""; position:absolute; inset:0; pointer-events:none; box-shadow:inset 0 0 34px rgba(0,0,0,.42); }
+.idle { filter:saturate(.6) brightness(.84); }
+/* The scale lives inside this transform chain rather than on a `scale` property
+   so preserve-3d is not broken — the board's own transform is written by JS. */
+.world { position:absolute; left:50%; top:56%; width:0; height:0; transform-style:preserve-3d; transform:rotateX(55deg) rotateZ(-3deg) scale(.63); }
+.floor { position:absolute; left:-116px; top:-102px; width:232px; height:204px; transform:translateZ(-18px); border:1px solid rgba(93,170,177,.16); background:repeating-linear-gradient(0deg,rgba(103,187,195,.12) 0 1px,transparent 1px 28px),repeating-linear-gradient(90deg,rgba(103,187,195,.12) 0 1px,transparent 1px 28px); }
+.shadow { position:absolute; left:-90px; top:-52px; width:180px; height:104px; transform:translateZ(-16px); border-radius:50%; background:radial-gradient(closest-side,rgba(0,0,0,.64),transparent); filter:blur(5px); }
+
+.board { position:absolute; left:0; top:0; width:0; height:0; transform-style:preserve-3d; will-change:transform; transition:filter .2s; }
+.pcbFace { position:absolute; left:-71px; top:-42px; width:142px; height:84px; box-sizing:border-box; border:1px solid #0b633e; border-radius:5px; transform-style:preserve-3d; backface-visibility:hidden; }
+.topFace { transform:translateZ(4px); background:linear-gradient(145deg,#1da66b 0%,#08784b 55%,#075b3c 100%); box-shadow:inset 0 0 0 2px rgba(45,209,139,.2),inset 0 0 16px rgba(0,44,27,.4); }
+.bottomFace { transform:translateZ(-4px) rotateX(180deg); color:#e9f3d9; background:linear-gradient(145deg,#15905c,#075a3b); box-shadow:inset 0 0 0 2px rgba(45,209,139,.16); text-align:center; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; }
+.edge { position:absolute; box-sizing:border-box; background:linear-gradient(#0d7047 0 30%,#d1ac58 31% 55%,#07583a 56%); border:1px solid #084d34; }
+.edgeFront,.edgeBack { left:-71px; top:-4px; width:142px; height:8px; }
+.edgeFront { transform:rotateX(-90deg) translateZ(42px); }
+.edgeBack { transform:rotateX(90deg) translateZ(42px); }
+.edgeLeft,.edgeRight { left:-4px; top:-42px; width:8px; height:84px; }
+.edgeLeft { transform:rotateY(-90deg) translateZ(71px); }
+.edgeRight { transform:rotateY(90deg) translateZ(71px); }
+
+.boardName { position:absolute; right:8px; bottom:4px; color:rgba(232,248,225,.84); font:700 8px/1 ui-monospace,SFMono-Regular,Consolas,monospace; letter-spacing:.5px; transform:translateZ(1px); }
+.axisMark { position:absolute; left:6px; bottom:4px; color:rgba(232,248,225,.7); font:700 6px/1 ui-monospace,SFMono-Regular,Consolas,monospace; transform:translateZ(1px); }
+.ic { position:absolute; display:grid; place-items:center; color:#c3c7c7; border:1px solid #090b0c; border-radius:2px; background:linear-gradient(145deg,#34383a,#111416 70%); box-shadow:2px 3px 4px rgba(0,0,0,.42); transform:translateZ(6px); font:600 5px/1 ui-monospace,monospace; }
+.imuChip { left:48px; top:25px; width:33px; height:31px; color:#d7dad9; }
+.imuChip b { font-size:6px; letter-spacing:.4px; }.imuChip small { font-size:5px; opacity:.72; }
+.pinsTop,.pinsBottom { position:absolute; left:2px; right:2px; display:flex; justify-content:space-around; }
+.pinsTop { top:-3px; }.pinsBottom { bottom:-3px; }
+.pinsTop i,.pinsBottom i { width:2px; height:4px; background:linear-gradient(90deg,#9a9b91,#e7e1c7); border-radius:1px; }
+.regulator { left:86px; top:21px; width:19px; height:15px; }
+.levelChip { left:91px; top:50px; width:18px; height:14px; }
+.smallChipA { left:30px; top:10px; width:18px; height:12px; }
+.smallChipB { left:33px; top:61px; width:16px; height:10px; }
+
+.qtSocket { position:absolute; top:18px; width:28px; height:48px; border:1px solid #07090a; border-radius:3px; background:linear-gradient(90deg,#171a1c,#3a3e40 46%,#0a0c0d); box-shadow:2px 3px 4px rgba(0,0,0,.46); transform:translateZ(8px); }
+.qtSocket::before { content:""; position:absolute; inset:8px 4px; border:1px solid #070809; border-radius:2px; background:#080a0b; }
+.qtSocket i { position:absolute; top:13px; bottom:13px; left:7px; right:7px; background:repeating-linear-gradient(90deg,#c5b67b 0 2px,transparent 2px 4px); opacity:.68; }
+.qtLeft { left:-5px; }.qtRight { right:-5px; }
+.whitePlug { position:absolute; left:-17px; top:27px; width:18px; height:31px; display:flex; justify-content:space-around; padding:4px 2px; box-sizing:border-box; border:1px solid #b5bdba; border-radius:3px 0 0 3px; background:linear-gradient(90deg,#f6fbf8,#cfd8d4); box-shadow:1px 2px 4px rgba(0,0,0,.34); transform:translateZ(10px); }
+.whitePlug i { width:2px; background:#6d7471; border-radius:1px; }
+.cableBundle { position:absolute; left:-78px; top:31px; width:63px; height:23px; transform:translateZ(10px); }
+.cableBundle i { position:absolute; left:0; width:66px; height:3px; border-radius:3px; background:linear-gradient(#303438,#090b0c); box-shadow:0 1px 1px rgba(0,0,0,.6); transform-origin:right center; }
+.cableBundle i:nth-child(1){top:1px;transform:rotate(-2deg)}.cableBundle i:nth-child(2){top:7px;transform:rotate(-.5deg)}.cableBundle i:nth-child(3){top:13px;transform:rotate(1deg)}.cableBundle i:nth-child(4){top:19px;transform:rotate(2.5deg)}
+
+.passiveBank { position:absolute; display:flex; gap:3px; transform:translateZ(6px); }
+.passiveBank i { display:block; width:7px; height:4px; border-radius:1px; background:linear-gradient(90deg,#cfc5a8 0 22%,#665d4b 23% 77%,#e7ddbc 78%); box-shadow:0 1px 1px rgba(0,0,0,.35); }
+.bankA { left:53px; top:9px; }.bankB { left:55px; top:66px; }.bankC { left:89px; top:9px; transform:translateZ(6px) rotate(90deg); transform-origin:left top; }
+.powerLed { position:absolute; right:13px; top:8px; width:9px; height:7px; border:1px solid #ff8c72; border-radius:2px; background:#571a13; transform:translateZ(7px); }
+.live .powerLed { background:#ff351c; box-shadow:0 0 5px 2px #ff2b16,0 0 16px 7px rgba(255,44,21,.7); animation:pulse 1.8s ease-in-out infinite; }
+.ledMark { position:absolute; right:4px; top:18px; color:rgba(241,246,225,.8); font:700 5px/1 ui-monospace,monospace; transform:translateZ(1px); }
+@keyframes pulse { 50% { filter:brightness(1.3); box-shadow:0 0 7px 3px #ff3b21,0 0 20px 9px rgba(255,44,21,.72); } }
+
+.bottomTitle { display:block; margin-top:9px; font-size:13px; font-weight:800; letter-spacing:.5px; }
+.bottomSubtitle { display:block; margin-top:3px; font-size:9px; font-weight:800; letter-spacing:1px; }
+.bottomSpecs { display:block; margin-top:4px; font-size:6px; line-height:1.25; }
+.bottomLogo { position:absolute; left:8px; bottom:6px; font-size:6px; opacity:.75; }
+.solderDots { position:absolute; inset:4px; display:flex; justify-content:space-between; align-items:flex-end; pointer-events:none; }
+.solderDots i { width:4px; height:4px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#fff7d5,#81765f 68%,#3f423b); opacity:.78; }
+.caption { position:absolute; right:8px; bottom:5px; color:#9fb0b5; font-size:9px; letter-spacing:.2px; }
+
+/* Tilt readout: how far the board is from the orientation it was calibrated in
+   (or from flat, when it has no calibration yet). data-level is set from the
+   render loop — attribute selectors are not hashed by CSS modules, so the
+   parent can drive these states without importing the class names. */
+.level {
+  position:absolute; left:7px; top:6px; padding:2px 6px; border-radius:999px;
+  font:700 9px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace; letter-spacing:.4px;
+  border:1px solid rgba(159,176,181,.32); color:#9fb0b5; background:rgba(8,14,17,.62);
+  transition:color .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+.level[data-level="near"] { color:#f0c265; border-color:rgba(240,194,101,.5); background:rgba(48,36,10,.6); }
+.level[data-level="on"] {
+  color:#0d1512; border-color:#5ee0a4; background:#5ee0a4;
+  box-shadow:0 0 8px 1px rgba(94,224,164,.55);
+}
+
+@media (prefers-reduced-motion:reduce) { .level { transition:none; } }
+
+@media (max-width:900px) { .scene { height:120px; } }
+@media (prefers-reduced-motion:reduce) { .live .powerLed { animation:none; } }
