@@ -8,6 +8,7 @@ import { parseTeensyDisplayState, writeTeensyDisplayState, type TeensyRequestedS
 import { extrapolateHandsForDisplay, predictHandsForDisplay, type DisplayHandHistory, type TrackedPoint } from "./pose-display";
 import { assessTrackingIntegrity } from "./tracking-integrity";
 import { processSam31Video } from "./sam31-client";
+import { CAMERA_DSP_BRIGHTNESS, cameraMediaConstraints, cameraStartErrorMessage } from "./camera-config";
 import SensorBoard3D from "./SensorBoard3D";
 import {
   addClockPoint,
@@ -261,16 +262,12 @@ const POSE_VIDEO_BITRATE = 1_800_000;
 // The C922's native MJPEG mode is 1280x720 at 30 Hz. Requesting the earlier
 // non-native 960x540 mode made Chromium choose its 1024x576 YUYV path, which
 // is capped at 15 Hz. Inference still downsamples to 640 wide in the worker.
-const CAMERA_WIDTH = 1280;
-const CAMERA_HEIGHT = 720;
 // The live C922 path on this machine delivers roughly 30 unique frames/second.
 // Ask for that proven rate and let continuous exposure brighten the room rather
 // than holding an underexposed 60 Hz shutter that the device cannot sustain.
-const TARGET_CAMERA_FPS = 30;
 // Modest UVC digital-brightness lift for the 60 Hz shutter. It does not alter
 // exposure time or frame cadence; controlled front lighting remains the source
 // of real signal and lower-noise landmark detail.
-const CAMERA_DSP_BRIGHTNESS = 160;
 const LEVEL_ON_DEG = 5;    // within this of the calibrated pose, call it level
 const LEVEL_NEAR_DEG = 15; // amber guidance band while the operator seats it
 
@@ -1590,15 +1587,7 @@ function VideoView({ session, captureRun, onReadyChange, onSaved, posePreviewRef
       // shown as "another application" even when Windows reported no active
       // camera client. Ask for the desired profile while allowing the camera
       // driver to return its closest native 720p/30 mode.
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: CAMERA_WIDTH },
-          height: { ideal: CAMERA_HEIGHT },
-          frameRate: { ideal: TARGET_CAMERA_FPS, max: TARGET_CAMERA_FPS },
-          facingMode: { ideal: "user" },
-        },
-        audio: false,
-      });
+      const stream = await navigator.mediaDevices.getUserMedia(cameraMediaConstraints());
       streamRef.current = stream;
       const cameraTrack = stream.getVideoTracks()[0];
       const capabilities = cameraTrack?.getCapabilities?.() as MediaTrackCapabilities & {
@@ -1649,14 +1638,7 @@ function VideoView({ session, captureRun, onReadyChange, onSaved, posePreviewRef
     } catch (error) {
       console.error(error);
       setCameraState("error"); cameraStateRef.current = "error";
-      const reason = error instanceof DOMException && error.name === "NotFoundError"
-        ? "No camera found — connect one and try again"
-        : error instanceof DOMException && error.name === "NotReadableError"
-          ? "Camera could not start — reconnect it or close an application that may be using it"
-          : error instanceof DOMException && error.name === "OverconstrainedError"
-            ? "Camera does not support the requested video mode"
-          : "Camera unavailable or permission denied";
-      setStatus(reason);
+      setStatus(cameraStartErrorMessage(error));
       stopInferencePipeline();
       streamRef.current?.getTracks().forEach((track) => track.stop()); streamRef.current=null;
       return false;

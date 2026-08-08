@@ -28,11 +28,12 @@ test("server renders the movement capture application", async () => {
 });
 
 test("hand capture includes synchronized hand, sensor, and privacy-preserving recording support", async () => {
-  const [page, recordings, worker, sam31Client] = await Promise.all([
+  const [page, recordings, worker, sam31Client, cameraConfig] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/recordings.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/pose-worker.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/sam31-client.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/camera-config.ts", import.meta.url), "utf8"),
   ]);
   const [desktop, sam31Service, sam31ChunkWorker] = await Promise.all([
     readFile(new URL("../desktop/main.cjs", import.meta.url), "utf8"),
@@ -63,10 +64,11 @@ test("hand capture includes synchronized hand, sensor, and privacy-preserving re
   assert.match(page, /sessionTimeMs/);
   assert.match(page, /chartDrawAtRef/);
   assert.match(page, /now - chartDrawAtRef\.current >= 66/);
-  assert.match(page, /const CAMERA_WIDTH = 1280/);
-  assert.match(page, /const CAMERA_HEIGHT = 720/);
-  assert.match(page, /frameRate: \{ ideal: TARGET_CAMERA_FPS, max: TARGET_CAMERA_FPS \}/);
-  assert.match(page, /const TARGET_CAMERA_FPS = 30/);
+  assert.match(page, /cameraMediaConstraints/);
+  assert.match(cameraConfig, /CAMERA_WIDTH = 1280/);
+  assert.match(cameraConfig, /CAMERA_HEIGHT = 720/);
+  assert.match(cameraConfig, /frameRate: \{ ideal: TARGET_CAMERA_FPS, max: TARGET_CAMERA_FPS \}/);
+  assert.match(cameraConfig, /TARGET_CAMERA_FPS = 30/);
   assert.match(page, /getVideoPlaybackQuality/);
   assert.match(page, /trackingLatencyMs/);
   assert.match(page, /inputMode/);
@@ -105,8 +107,8 @@ test("hand capture includes synchronized hand, sensor, and privacy-preserving re
   assert.match(sam31Client, /process-video-full/);
   assert.match(sam31Client, /sam31-native-v7/);
   assert.match(sam31Client, /BIMA version mismatch/);
-  assert.match(page, /width: \{ ideal: CAMERA_WIDTH \}/);
-  assert.doesNotMatch(page, /width:\{exact:CAMERA_WIDTH\}/);
+  assert.match(cameraConfig, /width: \{ ideal: CAMERA_WIDTH \}/);
+  assert.doesNotMatch(cameraConfig, /width:\{exact:CAMERA_WIDTH\}/);
   assert.match(page, /annotationFailed \? ""/);
   assert.match(page, /Meta SAM 3\.1 native propagate_in_video/);
   assert.match(sam31Service, /calcOpticalFlowPyrLK/);
