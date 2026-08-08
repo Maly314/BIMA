@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { addCaptureAsset, addCaptureSession, addRecording, deleteRecording, getCalibration, getCaptureSession, getLastPatient, listRecordings, newId, setCalibration, updateCaptureSession, type Calibration, type Recording } from "./recordings";
 import { CAPTURE_SCHEMA_VERSION, captureDurationMs, captureElapsedMs, captureEpochMs, stopCaptureRun, type CaptureRun } from "./capture-sync";
 import { calculateCorrectedAge, formatAgeDays, formatPma } from "./corrected-age";
+import { ageRangeLabel, ageWeeks, clinicalAgeMetadata, createPatientSession, detailedAgeLabel, type Session } from "./session-domain";
 import { parseTeensyDisplayState, writeTeensyDisplayState, type TeensyRequestedState } from "./teensy-control";
 import { extrapolateHandsForDisplay, predictHandsForDisplay, type DisplayHandHistory, type TrackedPoint } from "./pose-display";
 import { assessTrackingIntegrity } from "./tracking-integrity";
@@ -27,36 +28,6 @@ import {
   type ImuSample,
 } from "./sensor-calibration";
 
-type Session = {
-  patientNumber: number;
-  suspected: boolean;
-  ageYears: number;
-  ageMonths: number;
-  ageDays: number;
-  studyDate: string;
-  weightKg: number;
-  dateOfBirth: string;
-  gestationalAgeWeeks: number;
-  gestationalAgeDays: number;
-  gestationalAgeAtBirthDays: number;
-  chronologicalAgeDays: number;
-  prematurityCorrectionDays: number;
-  correctedAgeDays: number;
-  postmenstrualAgeDays: number;
-  expectedDueDate: string;
-  preterm: boolean;
-  useCorrectedAge: boolean;
-};
-type AgeLike = {
-  ageYears: number;
-  ageMonths: number;
-  ageDays: number;
-  correctedAgeDays?: number;
-  chronologicalAgeDays?: number;
-  postmenstrualAgeDays?: number;
-  preterm?: boolean;
-  useCorrectedAge?: boolean;
-};
 
 function BrandLockup({ compact = false }: { compact?: boolean }) {
   return (
@@ -68,40 +39,6 @@ function BrandLockup({ compact = false }: { compact?: boolean }) {
     </div>
   );
 }
-
-// Age helpers — total days uses 365-day years / 30-day months for weekly bucketing.
-const ageTotalDays = (a: AgeLike) => a.correctedAgeDays ?? (a.ageYears * 365 + a.ageMonths * 30 + a.ageDays);
-const ageWeeks = (a: AgeLike) => Math.floor(ageTotalDays(a) / 7);
-const ageRangeLabel = (a: AgeLike) => a.correctedAgeDays != null
-  ? `${ageWeeks(a)}–${ageWeeks(a) + 1} corrected weeks`
-  : `${ageWeeks(a)}–${ageWeeks(a) + 1} weeks`;
-const formatAge = (a: AgeLike) => {
-  if (a.correctedAgeDays != null && a.chronologicalAgeDays != null) {
-    const days = a.useCorrectedAge ? a.correctedAgeDays : a.chronologicalAgeDays;
-    return `${formatAgeDays(days)} ${a.useCorrectedAge ? "corrected" : "chronological"}`;
-  }
-  const parts: string[] = [];
-  if (a.ageYears) parts.push(`${a.ageYears}y`);
-  if (a.ageMonths) parts.push(`${a.ageMonths}mo`);
-  if (a.ageDays) parts.push(`${a.ageDays}d`);
-  return parts.length ? parts.join(" ") : "0d";
-};
-const detailedAgeLabel = (a: AgeLike) => a.preterm && a.postmenstrualAgeDays != null
-  ? `${formatAge(a)} · ${formatPma(a.postmenstrualAgeDays)}`
-  : formatAge(a);
-const clinicalAgeMetadata = (session: Session) => ({
-  dateOfBirth: session.dateOfBirth,
-  gestationalAgeWeeks: session.gestationalAgeWeeks,
-  gestationalAgeDays: session.gestationalAgeDays,
-  gestationalAgeAtBirthDays: session.gestationalAgeAtBirthDays,
-  chronologicalAgeDays: session.chronologicalAgeDays,
-  prematurityCorrectionDays: session.prematurityCorrectionDays,
-  correctedAgeDays: session.correctedAgeDays,
-  postmenstrualAgeDays: session.postmenstrualAgeDays,
-  expectedDueDate: session.expectedDueDate,
-  preterm: session.preterm,
-  useCorrectedAge: session.useCorrectedAge,
-});
 
 // One row per sensor, named for the limb it mounts on so the operator can place
 // the board without cross-referencing anything. The placement select defaults to
@@ -1870,28 +1807,17 @@ function AddPatientDialog({ nextPatient, onClose, onGo }: { nextPatient: number;
   }
   const go = () => {
     if (!correctedAge) return;
-    const pn = parseInt(patientNumber, 10);
-    const enteredWeight = Math.max(0, parseFloat(weightKg) || 0);
-    const normalizedWeightKg = weightUnit === "lb"
-      ? Number((enteredWeight * 0.45359237).toFixed(3))
-      : enteredWeight;
-    const years = Math.floor(correctedAge.chronologicalAgeDays / 365);
-    const afterYears = correctedAge.chronologicalAgeDays - years * 365;
-    const months = Math.floor(afterYears / 30);
-    const days = afterYears - months * 30;
-    onGo({
-      patientNumber: Number.isFinite(pn) ? pn : nextPatient,
+    onGo(createPatientSession({
+      patientNumber,
+      nextPatient,
       suspected,
-      ageYears: years,
-      ageMonths: months,
-      ageDays: days,
-      studyDate,
-      weightKg: normalizedWeightKg,
       dateOfBirth,
-      gestationalAgeWeeks: Number(gestationalWeeks),
-      gestationalAgeDays: Number(gestationalDays),
-      ...correctedAge,
-    });
+      studyDate,
+      gestationalWeeks,
+      gestationalDays,
+      weight: weightKg,
+      weightUnit,
+    }));
   };
   return (
     <div className="dialog-overlay" role="dialog" aria-modal="true" aria-label="Add patient" onClick={onClose}>
