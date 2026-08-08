@@ -1,0 +1,78 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { processSam31Video, SAM_PIPELINE_VERSION } from "../app/sam31-client.ts";
+
+const json = (body, init = {}) => new Response(JSON.stringify(body), {
+  status: 200,
+  headers: { "content-type": "application/json" },
+  ...init,
+});
+
+test("SAM client completes the versioned upload, progress, metadata, and video lifecycle", async () => {
+  const calls = [];
+  const responses = [
+    json({ model: "ready", pipelineVersion: SAM_PIPELINE_VERSION }),
+    json({ jobId: "job-1", status: "running", pipelineVersion: SAM_PIPELINE_VERSION }, { status: 202 }),
+    json({ status: "running", phase: "tracking", progress: 50, processedFrames: 4, frameCount: 8 }),
+    json({ status: "complete", phase: "complete", progress: 100, processedFrames: 8, frameCount: 8 }),
+    json({ frames: [{ frameIndex: 0, sourceVideoTimeMs: 0, segments: [], source: "sam31-native-propagation" }], processingMs: 42 }),
+    new Response(new Uint8Array([0, 1, 2]), { status: 200, headers: { "content-type": "video/mp4" } }),
+  ];
+  const progress = [];
+  const result = await processSam31Video(new Blob(["video"], { type: "video/webm" }), {
+    signal: new AbortController().signal,
+    serviceUrl: "http://sam.test",
+    sleep: async () => {},
+    fetcher: async (url, init) => {
+      calls.push({ url: String(url), method: init?.method ?? "GET" });
+      return responses.shift();
+    },
+    onProgress: (job) => progress.push(job.progress),
+  });
+
+  assert.deepEqual(calls.map((call) => call.url), [
+    "http://sam.test/load",
+    "http://sam.test/process-video-full",
+    "http://sam.test/result/job-1/status",
+    "http://sam.test/result/job-1/status",
+    "http://sam.test/result/job-1/metadata",
+    "http://sam.test/result/job-1/video",
+  ]);
+  assert.deepEqual(progress, [50, 100]);
+  assert.equal(result.frames.length, 1);
+  assert.equal(result.processingMs, 42);
+  assert.equal(result.annotatedBlob.type, "video/mp4");
+  assert.equal(result.annotatedBlob.size, 3);
+});
+
+test("SAM client rejects a stale service before uploading patient video", async () => {
+  let calls = 0;
+  await assert.rejects(
+    processSam31Video(new Blob(["video"]), {
+      signal: new AbortController().signal,
+      sleep: async () => {},
+      fetcher: async () => {
+        calls += 1;
+        return json({ model: "ready", pipelineVersion: "sam31-native-old" });
+      },
+    }),
+    /BIMA version mismatch/,
+  );
+  assert.equal(calls, 1);
+});
+
+test("SAM client surfaces the isolated worker failure returned by job status", async () => {
+  const responses = [
+    json({ model: "ready", pipelineVersion: SAM_PIPELINE_VERSION }),
+    json({ jobId: "job-2", pipelineVersion: SAM_PIPELINE_VERSION }, { status: 202 }),
+    json({ status: "failed", error: "SAM chunk 2 failed" }),
+  ];
+  await assert.rejects(
+    processSam31Video(new Blob(["video"]), {
+      signal: new AbortController().signal,
+      sleep: async () => {},
+      fetcher: async () => responses.shift(),
+    }),
+    /SAM chunk 2 failed/,
+  );
+});

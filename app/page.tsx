@@ -7,6 +7,7 @@ import { calculateCorrectedAge, formatAgeDays, formatPma } from "./corrected-age
 import { parseTeensyDisplayState, writeTeensyDisplayState, type TeensyRequestedState } from "./teensy-control";
 import { extrapolateHandsForDisplay, predictHandsForDisplay, type DisplayHandHistory, type TrackedPoint } from "./pose-display";
 import { assessTrackingIntegrity } from "./tracking-integrity";
+import { processSam31Video } from "./sam31-client";
 import SensorBoard3D from "./SensorBoard3D";
 import {
   addClockPoint,
@@ -111,7 +112,6 @@ const sensors = [
   { key: "right-leg", label: "Right leg", placement: "Right ankle" },
 ];
 // Model URLs, tier logic, and all inference live in app/pose-worker.ts.
-const SAM_PIPELINE_VERSION = "sam31-native-v7";
 
 // Chromium API not yet in the TS dom lib: taps a MediaStreamTrack as a
 // ReadableStream of VideoFrames.
@@ -1482,51 +1482,23 @@ function VideoView({ session, captureRun, onReadyChange, onSaved, posePreviewRef
   startSam31Ref.current = startSam31;
 
   const processSamRecordedVideo = async (blob: Blob, run: CaptureRun): Promise<{ frames: Sam31TrackingFrame[]; annotatedBlob: Blob; processingMs: number; samKeyframes: number }> => {
-    const loadResponse = await fetch("http://127.0.0.1:4831/load", { method: "POST" });
-    const loadResult = await loadResponse.json().catch(() => ({})) as { error?: string; pipelineVersion?: string };
-    if (!loadResponse.ok) throw new Error(loadResult.error || "SAM 3.1 could not load for post-processing");
-    if (loadResult.pipelineVersion !== SAM_PIPELINE_VERSION) {
-      throw new Error(`BIMA version mismatch: app expects ${SAM_PIPELINE_VERSION}, but the SAM service reports ${loadResult.pipelineVersion ?? "an older version"}. Restart BIMA and try again.`);
-    }
     const controller = new AbortController();
     samRequestAbortRef.current = controller;
     setStatus("SAM 3.1 full propagation · uploading video");
-    const response = await fetch("http://127.0.0.1:4831/process-video-full", {
-      method: "POST",
-      headers: { "Content-Type": blob.type || "video/webm" },
-      body: blob,
+    const result = await processSam31Video<Sam31Instance>(blob, {
       signal: controller.signal,
-    });
-    const started = await response.json().catch(() => ({})) as { jobId?: string; error?: string; pipelineVersion?: string };
-    if (!response.ok || !started.jobId) throw new Error(started.error || "SAM 3.1 native video propagation could not start");
-    if (started.pipelineVersion !== SAM_PIPELINE_VERSION) throw new Error("BIMA changed versions while processing. Restart BIMA and record again.");
-    let complete = false;
-    while (!complete) {
-      await new Promise((resolve) => window.setTimeout(resolve, 1000));
-      const statusResponse = await fetch(`http://127.0.0.1:4831/result/${started.jobId}/status`, { signal: controller.signal });
-      const job = await statusResponse.json().catch(() => ({})) as { status?: string; phase?: string; progress?: number; processedFrames?: number; frameCount?: number; error?: string };
-      if (!statusResponse.ok || job.status === "failed") throw new Error(job.error || "SAM 3.1 native propagation failed");
+      onProgress: (job) => {
       setStatus(`SAM 3.1 full propagation · ${job.phase ?? "processing"} · ${Math.round(job.progress ?? 0)}%${job.processedFrames ? ` · ${job.processedFrames}/${job.frameCount ?? "?"} frames` : ""}`);
-      complete = job.status === "complete";
-    }
-    const metadataResponse = await fetch(`http://127.0.0.1:4831/result/${started.jobId}/metadata`, { signal: controller.signal });
-    const result = await metadataResponse.json().catch(() => ({})) as {
-      frames?: Array<{ frameIndex: number; sourceVideoTimeMs: number; segments: Sam31Instance[]; source: "sam31-native-propagation" }>;
-      processingMs?: number;
-      error?: string;
-    };
-    if (!metadataResponse.ok) throw new Error(result.error || "SAM 3.1 native mask metadata could not be retrieved");
+      },
+    });
     setStatus("SAM 3.1 native tracking complete · retrieving annotated video");
-    const videoResponse = await fetch(`http://127.0.0.1:4831/result/${started.jobId}/video`, { signal: controller.signal });
     samRequestAbortRef.current = null;
-    if (!videoResponse.ok) throw new Error("The annotated SAM video could not be retrieved");
-    const annotatedBlob = await videoResponse.blob();
-    const frames = (result.frames ?? []).map((frame) => ({
+    const frames = result.frames.map((frame) => ({
       ...frame,
       sessionTimeMs: frame.sourceVideoTimeMs,
       epochMs: run.startedAtEpochMs + frame.sourceVideoTimeMs,
     }));
-    return { frames, annotatedBlob, processingMs: result.processingMs ?? 0, samKeyframes: frames.length };
+    return { frames, annotatedBlob: result.annotatedBlob, processingMs: result.processingMs, samKeyframes: frames.length };
   };
 
   const startVideoOnlyRecording = async () => {

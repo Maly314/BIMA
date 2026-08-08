@@ -28,10 +28,11 @@ test("server renders the movement capture application", async () => {
 });
 
 test("hand capture includes synchronized hand, sensor, and privacy-preserving recording support", async () => {
-  const [page, recordings, worker] = await Promise.all([
+  const [page, recordings, worker, sam31Client] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/recordings.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/pose-worker.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/sam31-client.ts", import.meta.url), "utf8"),
   ]);
   const [desktop, sam31Service, sam31ChunkWorker] = await Promise.all([
     readFile(new URL("../desktop/main.cjs", import.meta.url), "utf8"),
@@ -100,9 +101,10 @@ test("hand capture includes synchronized hand, sensor, and privacy-preserving re
   assert.match(sam31Service, /expandable_segments:True/);
   assert.match(sam31ChunkWorker, /torch\.inference_mode\(\), torch\.autocast/);
   assert.match(sam31Service, /propagate_in_video/);
-  assert.match(page, /process-video-full/);
-  assert.match(page, /sam31-native-v7/);
-  assert.match(page, /BIMA version mismatch/);
+  assert.match(page, /processSam31Video/);
+  assert.match(sam31Client, /process-video-full/);
+  assert.match(sam31Client, /sam31-native-v7/);
+  assert.match(sam31Client, /BIMA version mismatch/);
   assert.match(page, /width: \{ ideal: CAMERA_WIDTH \}/);
   assert.doesNotMatch(page, /width:\{exact:CAMERA_WIDTH\}/);
   assert.match(page, /annotationFailed \? ""/);
