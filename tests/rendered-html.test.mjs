@@ -28,16 +28,17 @@ test("server renders the movement capture application", async () => {
 });
 
 test("hand capture includes synchronized hand, sensor, and privacy-preserving recording support", async () => {
-  const [pageSource, landing, recordingTypes, recordingDatabase, worker, sam31Client, cameraConfig] = await Promise.all([
+  const [pageSource, landing, sensorView, recordingTypes, recordingDatabase, worker, sam31Client, cameraConfig] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/Landing.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/SensorView.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/recording-types.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/recording-database.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/pose-worker.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/sam31-client.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/camera-config.ts", import.meta.url), "utf8"),
   ]);
-  const page = `${pageSource}\n${landing}`;
+  const page = `${pageSource}\n${landing}\n${sensorView}`;
   const [desktop, sam31Service, sam31ChunkWorker] = await Promise.all([
     readFile(new URL("../desktop/main.cjs", import.meta.url), "utf8"),
     readFile(new URL("../desktop/sam31_service.py", import.meta.url), "utf8"),
@@ -129,7 +130,7 @@ test("hand capture includes synchronized hand, sensor, and privacy-preserving re
 });
 
 test("four sensors are labelled by limb and bound to fixed physical IMUs", async () => {
-  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../app/SensorView.tsx", import.meta.url), "utf8");
 
   for (const limb of ["Left arm", "Right arm", "Left leg", "Right leg"]) {
     assert.match(page, new RegExp(`label: "${limb}"`));
@@ -147,7 +148,7 @@ test("four sensors are labelled by limb and bound to fixed physical IMUs", async
 
 test("the 3D board reports how far it is from its calibrated orientation", async () => {
   const [page, board, boardCss] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/SensorView.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/SensorBoard3D.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/SensorBoard3D.module.css", import.meta.url), "utf8"),
   ]);
