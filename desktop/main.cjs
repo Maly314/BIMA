@@ -18,6 +18,8 @@ const fs = require('node:fs');
 const http = require('node:http');
 const { spawn, spawnSync } = require('node:child_process');
 const { app, BrowserWindow, session, shell } = require('electron');
+const { applyCaptureRuntimeSwitches, parseListeningPids } = require('./capture-runtime.cjs');
+const { isAllowedPermission, selectSerialPort } = require('./device-policy.cjs');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = 4820;
@@ -36,25 +38,7 @@ if (process.platform === 'win32') app.setAppUserModelId('org.bima.capture');
    This machine has a discrete RTX GPU, and MediaPipe's worker delegate needs
    WebGL plus accelerated video decode to keep hand inference realtime. The
    flags are set before app ready so the GPU process sees them from launch. */
-app.commandLine.appendSwitch('ignore-gpu-blocklist');
-app.commandLine.appendSwitch('enable-gpu-rasterization');
-app.commandLine.appendSwitch('enable-gpu');
-app.commandLine.appendSwitch('enable-gpu-compositing');
-app.commandLine.appendSwitch('enable-zero-copy');
-app.commandLine.appendSwitch('enable-accelerated-2d-canvas');
-app.commandLine.appendSwitch('enable-accelerated-video-decode');
-app.commandLine.appendSwitch('enable-webgl');
-app.commandLine.appendSwitch('enable-webgl2');
-app.commandLine.appendSwitch('use-angle', 'd3d11');
-app.commandLine.appendSwitch('use-gl', 'angle');
-
-/* Chromium's native window occlusion tracker misfires on Windows for
-   custom-titlebar windows like this one, marking a plainly visible window as
-   occluded — which throttles the renderer to 1 fps and freezes the pose
-   tracking loop (measured directly in this shell). This app is a capture
-   instrument; it must never be throttled. */
-app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
-app.commandLine.appendSwitch('disable-renderer-backgrounding');
+applyCaptureRuntimeSwitches(app.commandLine);
 const STARTUP_DEBUG = path.join(__dirname, 'startup-debug.log');
 fs.writeFileSync(STARTUP_DEBUG, `loaded ${new Date().toISOString()}\n`);
 process.on('uncaughtException', (error) => fs.appendFileSync(STARTUP_DEBUG, `uncaught ${error.stack || error}\n`));
@@ -136,16 +120,12 @@ function startSam31Server() {
    means silently running stale code after every update. Always start fresh. */
 function killPortHolder(port) {
   const out = spawnSync('netstat', ['-ano', '-p', 'tcp'], { windowsHide: true, encoding: 'utf8' });
-  const pids = new Set();
-  for (const line of String(out.stdout || '').split('\n')) {
-    const m = line.match(/TCP\s+\S+:(\d+)\s+\S+\s+LISTENING\s+(\d+)/);
-    if (m && Number(m[1]) === port && Number(m[2]) > 0) pids.add(m[2]);
-  }
+  const pids = parseListeningPids(out.stdout, port);
   for (const pid of pids) {
     fs.appendFileSync(STARTUP_DEBUG, `killing stale server pid ${pid} on port ${port}\n`);
     spawnSync('taskkill', ['/pid', pid, '/T', '/F'], { windowsHide: true });
   }
-  return pids.size > 0;
+  return pids.length > 0;
 }
 
 /* ---- boot splash (shown while the server starts / builds) --------------- */
@@ -234,11 +214,8 @@ function createWindow() {
 /* ---- permissions: camera + the sensor board's serial port --------------- */
 
 function wireDevices(ses) {
-  const ALLOWED = ['media', 'serial', 'camera', 'microphone'];
-  const isApp = (url) => typeof url === 'string' && url.startsWith(APP_URL);
-
   ses.setPermissionRequestHandler((wc, permission, callback) => {
-    callback(isApp(wc?.getURL()) && ALLOWED.includes(permission));
+    callback(isAllowedPermission(permission, wc?.getURL(), APP_URL));
   });
   // Chromium consults the CHECK handler (not the request handler) before
   // getUserMedia in an Electron window. Without it the default denies and the
@@ -246,35 +223,20 @@ function wireDevices(ses) {
   // without ever showing a prompt.
   ses.setPermissionCheckHandler((wc, permission, requestingOrigin) => {
     const origin = requestingOrigin || wc?.getURL();
-    return isApp(origin) && ALLOWED.includes(permission);
+    return isAllowedPermission(permission, origin, APP_URL);
   });
   ses.setDevicePermissionHandler((details) => details.deviceType === 'serial');
   // Windows also exposes legacy COM ports (the motherboard's COM1 shows up as
   // an ACPI device with no USB vendor id). Select the Teensy USB Serial
   // identity explicitly instead of taking whichever port happens to be first.
   //
-  // Electron reports vendorId/productId as DECIMAL strings — the Teensy is
-  // "5824"/"1155", not "16c0"/"0483". Match either representation so this
-  // survives a change in Electron's formatting.
-  const idMatches = (value, hex) => {
-    const raw = String(value ?? '').trim().toLowerCase().replace(/^0x/, '');
-    if (!raw) return false;
-    const wanted = parseInt(hex, 16);
-    return parseInt(raw, 10) === wanted || parseInt(raw, 16) === wanted;
-  };
-
   ses.on('select-serial-port', (event, ports, wc, callback) => {
     event.preventDefault();
     const describe = (port) =>
       `${port.portName || port.portId} vid=${port.vendorId} pid=${port.productId} "${port.displayName || ''}"`;
     console.log('[serial] ports offered:', ports.map(describe).join(' | ') || '(none)');
 
-    const teensy = ports.find(
-      (port) => idMatches(port.vendorId, '16C0') && idMatches(port.productId, '0483')
-    );
-    // Fall back to any USB serial device. Legacy/ACPI ports carry no vendorId,
-    // so this cannot accidentally select COM1.
-    const chosen = teensy || ports.find((port) => String(port.vendorId || '').trim() !== '');
+    const chosen = selectSerialPort(ports);
 
     console.log('[serial] selected:', chosen ? describe(chosen) : 'NONE');
     callback(chosen ? chosen.portId : '');
