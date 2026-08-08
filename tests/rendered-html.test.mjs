@@ -28,14 +28,16 @@ test("server renders the movement capture application", async () => {
 });
 
 test("hand capture includes synchronized hand, sensor, and privacy-preserving recording support", async () => {
-  const [page, recordingTypes, recordingDatabase, worker, sam31Client, cameraConfig] = await Promise.all([
+  const [pageSource, landing, recordingTypes, recordingDatabase, worker, sam31Client, cameraConfig] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/Landing.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/recording-types.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/recording-database.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/pose-worker.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/sam31-client.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/camera-config.ts", import.meta.url), "utf8"),
   ]);
+  const page = `${pageSource}\n${landing}`;
   const [desktop, sam31Service, sam31ChunkWorker] = await Promise.all([
     readFile(new URL("../desktop/main.cjs", import.meta.url), "utf8"),
     readFile(new URL("../desktop/sam31_service.py", import.meta.url), "utf8"),
@@ -164,17 +166,20 @@ test("the 3D board reports how far it is from its calibrated orientation", async
 });
 
 test("patient weight accepts kilograms or pounds and normalizes storage to kilograms", async () => {
-  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
-  assert.match(page, /weightUnit/);
-  assert.match(page, /0\.45359237/);
-  assert.match(page, /setWeightUnit\("kg"\).*?>kg<\/button>/);
-  assert.match(page, /setWeightUnit\("lb"\).*?>lb<\/button>/);
-  assert.match(page, /weightKg: normalizedWeightKg/);
+  const [landing, sessionDomain] = await Promise.all([
+    readFile(new URL("../app/Landing.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/session-domain.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(landing, /weightUnit/);
+  assert.match(sessionDomain, /0\.45359237/);
+  assert.match(landing, /setWeightUnit\("kg"\).*?>kg<\/button>/);
+  assert.match(landing, /setWeightUnit\("lb"\).*?>lb<\/button>/);
+  assert.match(sessionDomain, /weightKg/);
 });
 
 test("patient age is calculated from birth date and gestational age", async () => {
   const [page, correctedAge] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/Landing.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/corrected-age.ts", import.meta.url), "utf8"),
   ]);
   assert.match(page, /Date of birth/);
