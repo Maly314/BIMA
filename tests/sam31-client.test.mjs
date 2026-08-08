@@ -19,6 +19,7 @@ test("SAM client completes the versioned upload, progress, metadata, and video l
     new Response(new Uint8Array([0, 1, 2]), { status: 200, headers: { "content-type": "video/mp4" } }),
   ];
   const progress = [];
+  const phases = [];
   const result = await processSam31Video(new Blob(["video"], { type: "video/webm" }), {
     signal: new AbortController().signal,
     serviceUrl: "http://sam.test",
@@ -28,6 +29,7 @@ test("SAM client completes the versioned upload, progress, metadata, and video l
       return responses.shift();
     },
     onProgress: (job) => progress.push(job.progress),
+    onPhase: (phase) => phases.push(phase),
   });
 
   assert.deepEqual(calls.map((call) => call.url), [
@@ -39,6 +41,7 @@ test("SAM client completes the versioned upload, progress, metadata, and video l
     "http://sam.test/result/job-1/video",
   ]);
   assert.deepEqual(progress, [50, 100]);
+  assert.deepEqual(phases, ["retrieving-metadata", "retrieving-video"]);
   assert.equal(result.frames.length, 1);
   assert.equal(result.processingMs, 42);
   assert.equal(result.annotatedBlob.type, "video/mp4");
@@ -74,5 +77,40 @@ test("SAM client surfaces the isolated worker failure returned by job status", a
       fetcher: async () => responses.shift(),
     }),
     /SAM chunk 2 failed/,
+  );
+});
+
+test("SAM client rejects an unexpected job state instead of polling forever", async () => {
+  const responses = [
+    json({ model: "ready", pipelineVersion: SAM_PIPELINE_VERSION }),
+    json({ jobId: "job-3", pipelineVersion: SAM_PIPELINE_VERSION }, { status: 202 }),
+    json({ status: "paused" }),
+  ];
+  await assert.rejects(
+    processSam31Video(new Blob(["video"]), {
+      signal: new AbortController().signal,
+      sleep: async () => {},
+      fetcher: async () => responses.shift(),
+    }),
+    /unexpected job status: paused/,
+  );
+});
+
+test("SAM client preserves cancellation during result polling", async () => {
+  const controller = new AbortController();
+  const responses = [
+    json({ model: "ready", pipelineVersion: SAM_PIPELINE_VERSION }),
+    json({ jobId: "job-4", pipelineVersion: SAM_PIPELINE_VERSION }, { status: 202 }),
+  ];
+  await assert.rejects(
+    processSam31Video(new Blob(["video"]), {
+      signal: controller.signal,
+      sleep: async () => controller.abort(),
+      fetcher: async (_url, init) => {
+        if (init?.signal?.aborted) throw new DOMException("The operation was aborted", "AbortError");
+        return responses.shift();
+      },
+    }),
+    (error) => error instanceof DOMException && error.name === "AbortError",
   );
 });

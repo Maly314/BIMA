@@ -1482,20 +1482,27 @@ function VideoView({ session, captureRun, onReadyChange, onSaved, posePreviewRef
     const controller = new AbortController();
     samRequestAbortRef.current = controller;
     setStatus("SAM 3.1 full propagation · uploading video");
-    const result = await processSam31Video<Sam31Instance>(blob, {
-      signal: controller.signal,
-      onProgress: (job) => {
-      setStatus(`SAM 3.1 full propagation · ${job.phase ?? "processing"} · ${Math.round(job.progress ?? 0)}%${job.processedFrames ? ` · ${job.processedFrames}/${job.frameCount ?? "?"} frames` : ""}`);
-      },
-    });
-    setStatus("SAM 3.1 native tracking complete · retrieving annotated video");
-    samRequestAbortRef.current = null;
-    const frames = result.frames.map((frame) => ({
-      ...frame,
-      sessionTimeMs: frame.sourceVideoTimeMs,
-      epochMs: run.startedAtEpochMs + frame.sourceVideoTimeMs,
-    }));
-    return { frames, annotatedBlob: result.annotatedBlob, processingMs: result.processingMs, samKeyframes: frames.length };
+    try {
+      const result = await processSam31Video<Sam31Instance>(blob, {
+        signal: controller.signal,
+        onProgress: (job) => {
+          setStatus(`SAM 3.1 full propagation · ${job.phase ?? "processing"} · ${Math.round(job.progress ?? 0)}%${job.processedFrames ? ` · ${job.processedFrames}/${job.frameCount ?? "?"} frames` : ""}`);
+        },
+        onPhase: (phase) => {
+          setStatus(phase === "retrieving-video"
+            ? "SAM 3.1 native tracking complete · retrieving annotated video"
+            : "SAM 3.1 native tracking complete · retrieving tracking metadata");
+        },
+      });
+      const frames = result.frames.map((frame) => ({
+        ...frame,
+        sessionTimeMs: frame.sourceVideoTimeMs,
+        epochMs: run.startedAtEpochMs + frame.sourceVideoTimeMs,
+      }));
+      return { frames, annotatedBlob: result.annotatedBlob, processingMs: result.processingMs, samKeyframes: frames.length };
+    } finally {
+      if (samRequestAbortRef.current === controller) samRequestAbortRef.current = null;
+    }
   };
 
   const startVideoOnlyRecording = async () => {

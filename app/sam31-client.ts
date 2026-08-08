@@ -20,6 +20,7 @@ export type Sam31NativeFrame<TSegment> = {
 type ProcessOptions = {
   signal: AbortSignal;
   onProgress?: (progress: Sam31JobProgress) => void;
+  onPhase?: (phase: "retrieving-metadata" | "retrieving-video") => void;
   fetcher?: typeof fetch;
   sleep?: (milliseconds: number) => Promise<void>;
   serviceUrl?: string;
@@ -58,8 +59,10 @@ export async function processSam31Video<TSegment>(blob: Blob, options: ProcessOp
     if (!statusResponse.ok || job.status === "failed") throw new Error(job.error || "SAM 3.1 native propagation failed");
     options.onProgress?.(job);
     if (job.status === "complete") break;
+    if (job.status !== "running") throw new Error(`SAM 3.1 returned an unexpected job status: ${job.status ?? "missing"}`);
   }
 
+  options.onPhase?.("retrieving-metadata");
   const metadataResponse = await fetcher(`${serviceUrl}/result/${started.jobId}/metadata`, { signal: options.signal });
   const result = await jsonOrEmpty<{
     frames?: Sam31NativeFrame<TSegment>[];
@@ -68,6 +71,7 @@ export async function processSam31Video<TSegment>(blob: Blob, options: ProcessOp
   }>(metadataResponse);
   if (!metadataResponse.ok) throw new Error(result.error || "SAM 3.1 native mask metadata could not be retrieved");
 
+  options.onPhase?.("retrieving-video");
   const videoResponse = await fetcher(`${serviceUrl}/result/${started.jobId}/video`, { signal: options.signal });
   if (!videoResponse.ok) throw new Error("The annotated SAM video could not be retrieved");
   return {
