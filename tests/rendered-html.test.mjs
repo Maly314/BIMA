@@ -28,17 +28,18 @@ test("server renders the movement capture application", async () => {
 });
 
 test("hand capture includes synchronized hand, sensor, and privacy-preserving recording support", async () => {
-  const [pageSource, landing, sensorView, recordingTypes, recordingDatabase, worker, sam31Client, cameraConfig] = await Promise.all([
+  const [pageSource, landing, sensorView, videoView, recordingTypes, recordingDatabase, worker, sam31Client, cameraConfig] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/Landing.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/SensorView.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/VideoView.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/recording-types.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/recording-database.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/pose-worker.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/sam31-client.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/camera-config.ts", import.meta.url), "utf8"),
   ]);
-  const page = `${pageSource}\n${landing}\n${sensorView}`;
+  const page = `${pageSource}\n${landing}\n${sensorView}\n${videoView}`;
   const [desktop, sam31Service, sam31ChunkWorker] = await Promise.all([
     readFile(new URL("../desktop/main.cjs", import.meta.url), "utf8"),
     readFile(new URL("../desktop/sam31_service.py", import.meta.url), "utf8"),
