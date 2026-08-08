@@ -33,29 +33,89 @@ test("hand capture includes synchronized hand, sensor, and privacy-preserving re
     readFile(new URL("../app/recordings.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/pose-worker.ts", import.meta.url), "utf8"),
   ]);
+  const [desktop, sam31Service, sam31ChunkWorker] = await Promise.all([
+    readFile(new URL("../desktop/main.cjs", import.meta.url), "utf8"),
+    readFile(new URL("../desktop/sam31_service.py", import.meta.url), "utf8"),
+    readFile(new URL("../desktop/sam31_chunk_worker.py", import.meta.url), "utf8"),
+  ]);
 
-  // Inference runs off the main thread in the worker; the page feeds it
-  // VideoFrames and draws each frame together with its own landmarks, so the
-  // skeleton can never trail the image it is drawn on.
+  // Inference runs off the main thread. The compositor keeps live video fluid
+  // while one latest frame is tracked at a time; display prediction is never
+  // written into the raw training sidecar.
   assert.match(worker, /HandLandmarker/);
   assert.doesNotMatch(worker, /PoseLandmarker/);
+  assert.match(worker, /VideoFrame keeps the camera texture/);
+  assert.match(worker, /inputMode: detected\.mode/);
+  assert.match(worker, /inferSampleMs/);
   assert.match(page, /pose-worker\.ts/);
   assert.match(page, /MediaStreamTrackProcessor/);
-  assert.match(page, /transferFromImageBitmap/);
+  assert.match(page, /predictHandsForDisplay/);
+  assert.match(page, /pendingFrameRef/);
+  assert.match(page, /flushPendingRef\.current/);
+  assert.match(page, /maxBufferSize: 1/);
+  assert.match(page, /pendingFrameRef\.current\.frame\.close/);
+  assert.doesNotMatch(page, /transferFromImageBitmap/);
+  assert.doesNotMatch(worker, /createImageBitmap/);
   assert.match(page, /Hand movement/);
   assert.match(page, /framing/);
   assert.match(page, /sidecarFilename/);
   assert.match(page, /sessionTimeMs/);
+  assert.match(page, /chartDrawAtRef/);
+  assert.match(page, /now - chartDrawAtRef\.current >= 66/);
+  assert.match(page, /const CAMERA_WIDTH = 1280/);
+  assert.match(page, /const CAMERA_HEIGHT = 720/);
+  assert.match(page, /frameRate: \{ ideal: TARGET_CAMERA_FPS, max: TARGET_CAMERA_FPS \}/);
+  assert.match(page, /const TARGET_CAMERA_FPS = 30/);
+  assert.match(page, /getVideoPlaybackQuality/);
+  assert.match(page, /trackingLatencyMs/);
+  assert.match(page, /inputMode/);
+  assert.match(page, /p95InferMs/);
+  assert.match(page, /maxInferMs/);
+  assert.match(page, /skippedFrameCountRef/);
+  assert.match(page, /worker-error/);
+  assert.match(desktop, /getAppMetrics/);
+  assert.match(desktop, /workingSetMb/);
   assert.match(page, /captureStream\(0\)/);
   assert.match(page, /requestFrame\(\)/);
   assert.match(page, /Record together/);
   assert.match(page, /Sensor CSV/);
   assert.match(page, /rawCameraStored:\s*false/);
-  assert.match(page, /Raw camera frames are not saved/);
-  assert.match(page, /Download pose video/);
-  assert.match(page, /Download landmark data/);
+  assert.match(page, /assessTrackingIntegrity/);
+  assert.match(page, /integrity/);
+  assert.match(page, /untouched source video/);
+  assert.match(page, /Download annotated video/);
+  assert.match(page, /Download raw video/);
+  assert.match(page, /Download tracking data/);
+  assert.match(page, />SAM 3\.1</);
+  assert.match(page, /stopInferencePipeline\(\)/);
+  assert.match(page, /workerRef\.current\?\.terminate\(\)/);
+  assert.match(page, /samRequestAbortRef\.current\?\.abort\(\)/);
+  assert.match(sam31Service, /build_sam3_predictor/);
+  assert.match(sam31Service, /version="sam3\.1"/);
+  assert.match(sam31Service, /_process_video/);
+  assert.match(sam31Service, /process-video-full/);
+  assert.match(sam31Service, /sam31-native-v7/);
+  assert.match(sam31Service, /FULL_VIDEO_CHUNK_FRAMES/);
+  assert.match(sam31Service, /sam31_chunk_worker\.py/);
+  assert.match(sam31Service, /expandable_segments:True/);
+  assert.match(sam31ChunkWorker, /torch\.inference_mode\(\), torch\.autocast/);
+  assert.match(sam31Service, /propagate_in_video/);
+  assert.match(page, /process-video-full/);
+  assert.match(page, /sam31-native-v7/);
+  assert.match(page, /BIMA version mismatch/);
+  assert.match(page, /width: \{ ideal: CAMERA_WIDTH \}/);
+  assert.doesNotMatch(page, /width:\{exact:CAMERA_WIDTH\}/);
+  assert.match(page, /annotationFailed \? ""/);
+  assert.match(page, /Meta SAM 3\.1 native propagate_in_video/);
+  assert.match(sam31Service, /calcOpticalFlowPyrLK/);
+  assert.match(sam31Service, /estimateAffinePartial2D/);
+  assert.match(sam31Service, /h264_nvenc/);
+  assert.match(sam31Service, /yuv420p/);
+  assert.doesNotMatch(sam31Service, /(?:import|from)\s+.*mediapipe/i);
+  assert.match(desktop, /startSam31Server/);
   assert.match(page, /Tracking output is experimental and is not a diagnosis/);
   assert.match(recordings, /sidecarBlob\?: Blob/);
+  assert.match(recordings, /rawBlob\?: Blob/);
   assert.match(recordings, /captureSessionId\?: string/);
   assert.match(recordings, /capture-sessions/);
   assert.match(recordings, /"pose"/);

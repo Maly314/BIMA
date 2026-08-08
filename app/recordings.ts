@@ -26,6 +26,10 @@ export type Recording = {
   blob: Blob;
   filename: string;
   size: number;
+  rawBlob?: Blob;        // untouched camera source when the primary blob is annotated
+  rawFilename?: string;
+  annotationStatus?: "complete" | "failed";
+  processingError?: string;
   thumbnail?: string;    // data URL
   sidecarBlob?: Blob;    // timestamped pose/hand landmarks for video records
   sidecarFilename?: string;

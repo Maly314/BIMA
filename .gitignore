@@ -53,6 +53,8 @@ next-env.d.ts
 # Python caches
 __pycache__/
 *.py[cod]
+/.sam31-venv/
+/local-models/sam3/
 
 # downloaded datasets and generated experiment output
 /pose-research/data/

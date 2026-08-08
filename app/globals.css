@@ -166,16 +166,10 @@ input:focus, select:focus { border-color:var(--teal); background:rgba(255,255,25
 
 .video-view { display:grid; grid-template-columns:minmax(0,1fr) 330px; min-height:640px; }
 .video-stage { position:relative; min-height:640px; background:#12181c; overflow:hidden; }
-/* Two canvases form the live view, both painted from the SAME camera frame so
-   the skeleton sits on the hand with zero relative offset: .camera-frame is a
-   bitmaprenderer canvas carrying the image (compositor-direct — no 2D raster,
-   which was poisoning GPU inference when maximised), mirrored here in CSS;
-   the transparent canvas above it carries the strokes, mirrored in its own
-   2D transform to match. (A live <video> layer was tried — real-time image,
-   but the skeleton visibly trailed it: two layers, two moments in time.) */
-.video-stage video { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+/* The compositor paints the camera independently at its native rate; the
+   transparent canvas only carries the latency-compensated hand overlay. */
+.video-stage video { position:absolute; inset:0; display:block; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); background:#12181c; pointer-events:none; }
 .video-stage canvas { display:block; width:100%; height:100%; position:absolute; inset:0; object-fit:cover; background:transparent; pointer-events:none; }
-.video-stage .camera-frame { transform:scaleX(-1); background:#12181c; }
 .video-stage .pose-recording-canvas { display:none; }
 .camera-empty { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; color:#f1f3f3; padding:30px; }
 .camera-empty h2 { font-size:25px; font-weight:500; margin:20px 0 6px; }.camera-empty p { color:#aeb7bb; margin:0 0 24px; }
@@ -186,12 +180,24 @@ input:focus, select:focus { border-color:var(--teal); background:rgba(255,255,25
 .enable-camera:disabled { opacity:.65; cursor:wait; }
 .tracking-badge { position:absolute; top:20px; left:20px; padding:9px 13px; border-radius:8px; background:rgba(14,20,23,.6); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.1); color:#fff; font-size:14px; display:flex; align-items:center; gap:9px; }
 .live-dot { width:9px; height:9px; border-radius:50%; background:#24d2c1; box-shadow:0 0 0 4px rgba(36,210,193,.18); animation:pulse-dot 1.6s var(--ease) infinite; }
+.live-dot.error { background:#c75d4d; box-shadow:0 0 0 4px rgba(199,93,77,.17); animation:none; }
 @keyframes pulse-dot { 0%,100% { box-shadow:0 0 0 4px rgba(36,210,193,.18); } 50% { box-shadow:0 0 0 7px rgba(36,210,193,.08); } }
 .overlay-key { position:absolute; right:20px; top:20px; display:flex; gap:13px; padding:9px 12px; border-radius:8px; background:rgba(14,20,23,.6); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.1); color:#fff; font-size:12px; }
 .overlay-key span { display:flex; align-items:center; gap:6px; }
 .overlay-key i { width:9px; height:9px; border-radius:50%; display:block; }
-.overlay-key .pose-key { background:#24d2c1; }.overlay-key .hand-key { background:#ffd166; }
+.overlay-key .pose-key, .overlay-key .raw-key { background:#24d2c1; }.overlay-key .hand-key { background:#ffd166; }
 .video-panel { padding:30px 26px; border-left:1px solid var(--line); display:flex; flex-direction:column; background:var(--glass-soft); }
+.inference-mode-switch { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:5px; margin:0 0 24px; border:1px solid var(--line); border-radius:10px; background:rgba(41,52,58,.055); }
+.inference-mode-switch button { min-height:45px; padding:7px 10px; border:1px solid transparent; border-radius:7px; background:transparent; color:#5e666c; font:inherit; font-size:13px; font-weight:650; cursor:pointer; }
+.inference-mode-switch button.active { background:#fff; color:#087886; border-color:rgba(8,120,134,.23); box-shadow:0 2px 8px rgba(23,38,45,.09); }
+.inference-mode-switch button.experimental { display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; }
+.inference-mode-switch button.experimental span { color:#8a6b16; font-size:9px; letter-spacing:.11em; text-transform:uppercase; margin-bottom:3px; }
+.inference-mode-switch button:disabled { cursor:not-allowed; opacity:.58; }
+.sam-record-button { width:100%; min-height:46px; margin:-8px 0 22px; border:1px solid transparent; border-radius:8px; color:#fff; background:linear-gradient(180deg,#0d8b9b,var(--teal)); box-shadow:0 5px 14px rgba(8,120,134,.28), inset 0 1px 0 rgba(255,255,255,.2); font:inherit; font-size:14px; font-weight:700; cursor:pointer; transition:background var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.sam-record-button:hover:not(:disabled):not(.recording) { background:linear-gradient(180deg,#0f97a8,#0a6873); transform:translateY(-1px); }
+.sam-record-button.recording { background:linear-gradient(180deg,#b34440,#a63c3c); }
+.sam-record-button:disabled { opacity:.58; cursor:not-allowed; }
+.model-error { margin:16px 0 0; padding:11px 12px; border-radius:8px; border:1px solid rgba(178,81,62,.24); background:rgba(178,81,62,.08); color:#8c3e30; font-size:12px; line-height:1.45; }
 .video-panel .eyebrow { color:var(--teal); text-transform:uppercase; font-size:12px; font-weight:650; letter-spacing:.11em; }
 .video-panel h2 { font-size:25px; margin:7px 0 10px; }.video-panel p { color:#646a70; line-height:1.5; margin:0; }
 .video-panel dl { margin:32px 0; border-top:1px solid var(--line); }

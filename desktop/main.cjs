@@ -21,6 +21,7 @@ const { app, BrowserWindow, session, shell } = require('electron');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = 4820;
+const SAM31_PORT = 4831;
 const APP_URL = `http://127.0.0.1:${PORT}`;
 const BG = '#e4ebee';                       // matches the gradient scene
 const ICON_PATH = path.join(ROOT, 'public', 'bima-desktop.ico');
@@ -30,6 +31,22 @@ const BRAND_LOGO_DATA = fs.existsSync(path.join(ROOT, 'public', 'bima-logo.png')
 
 app.setName('BIMA');
 if (process.platform === 'win32') app.setAppUserModelId('org.bima.capture');
+
+/* The capture window must not inherit Chromium's software-only fallback.
+   This machine has a discrete RTX GPU, and MediaPipe's worker delegate needs
+   WebGL plus accelerated video decode to keep hand inference realtime. The
+   flags are set before app ready so the GPU process sees them from launch. */
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-gpu');
+app.commandLine.appendSwitch('enable-gpu-compositing');
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('enable-accelerated-2d-canvas');
+app.commandLine.appendSwitch('enable-accelerated-video-decode');
+app.commandLine.appendSwitch('enable-webgl');
+app.commandLine.appendSwitch('enable-webgl2');
+app.commandLine.appendSwitch('use-angle', 'd3d11');
+app.commandLine.appendSwitch('use-gl', 'angle');
 
 /* Chromium's native window occlusion tracker misfires on Windows for
    custom-titlebar windows like this one, marking a plainly visible window as
@@ -45,6 +62,7 @@ process.on('unhandledRejection', (error) => fs.appendFileSync(STARTUP_DEBUG, `re
 
 let win = null;
 let server = null;
+let sam31Server = null;
 
 /* Only one instance — a second launch focuses the existing window. */
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
@@ -84,6 +102,33 @@ function killServer() {
     spawnSync('taskkill', ['/pid', String(server.pid), '/T', '/F'], { windowsHide: true });
   }
   server = null;
+  if (sam31Server && sam31Server.pid && !sam31Server.killed) {
+    spawnSync('taskkill', ['/pid', String(sam31Server.pid), '/T', '/F'], { windowsHide: true });
+  }
+  sam31Server = null;
+}
+
+function startSam31Server() {
+  killPortHolder(SAM31_PORT);
+  const python = path.join(ROOT, '.sam31-venv', 'Scripts', 'python.exe');
+  const service = path.join(__dirname, 'sam31_service.py');
+  if (!fs.existsSync(python) || !fs.existsSync(service)) {
+    fs.appendFileSync(STARTUP_DEBUG, 'sam31 service unavailable: runtime is not installed\n');
+    return;
+  }
+  sam31Server = spawn(python, [service], {
+    cwd: ROOT,
+    windowsHide: true,
+    env: { ...process.env, BIMA_SAM31_PORT: String(SAM31_PORT), PYTORCH_CUDA_ALLOC_CONF: 'expandable_segments:True' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const logSam = (chunk) => fs.appendFileSync(STARTUP_DEBUG, String(chunk));
+  sam31Server.stdout.on('data', logSam);
+  sam31Server.stderr.on('data', logSam);
+  sam31Server.on('exit', (code) => {
+    fs.appendFileSync(STARTUP_DEBUG, `sam31 service exited code=${code}\n`);
+    sam31Server = null;
+  });
 }
 
 /* Kill whatever process is listening on our port. A leftover server from an
@@ -142,6 +187,25 @@ function createWindow() {
 
   win.once('ready-to-show', () => { win.maximize(); win.show(); });
   win.on('closed', () => { win = null; });
+  // Preserve the lightweight, once-per-second tracking telemetry outside the
+  // renderer so a real run can be audited after the window closes. This does
+  // not log frames, landmarks, or camera pixels.
+  win.webContents.on('console-message', (_event, _level, message) => {
+    if (typeof message === 'string' && (message.includes('[tracking] pipeline') || message.includes('[camera] negotiation'))) {
+      fs.appendFileSync(STARTUP_DEBUG, `${new Date().toISOString()} ${message}\n`);
+      try {
+        const metrics = app.getAppMetrics().map((metric) => ({
+          pid: metric.pid,
+          type: metric.type,
+          cpu: Number(metric.cpu?.percentCPUUsage ?? 0),
+          workingSetMb: Number(((metric.memory?.workingSetSize ?? 0) / 1024).toFixed(1)),
+        }));
+        fs.appendFileSync(STARTUP_DEBUG, `${new Date().toISOString()} [runtime] ${JSON.stringify(metrics)}\n`);
+      } catch (error) {
+        fs.appendFileSync(STARTUP_DEBUG, `${new Date().toISOString()} [runtime-error] ${error?.stack || error}\n`);
+      }
+    }
+  });
 
   // Keep outbound links in the real browser, never in the app window.
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -221,8 +285,20 @@ function wireDevices(ses) {
 
 app.whenReady().then(async () => {
   fs.appendFileSync(STARTUP_DEBUG, 'ready\n');
+  // Keep the runtime GPU decision visible in the local startup log. A
+  // renderer can report a healthy camera while MediaPipe is actually running
+  // on a software WebGL path, which is the difference between single-digit
+  // and real-time hand tracking on this app.
+  try {
+    fs.appendFileSync(STARTUP_DEBUG, `gpu-features-before-renderer ${JSON.stringify(app.getGPUFeatureStatus())}\n`);
+    const gpuInfo = await app.getGPUInfo('complete');
+    fs.appendFileSync(STARTUP_DEBUG, `gpu-info ${JSON.stringify(gpuInfo)}\n`);
+  } catch (error) {
+    fs.appendFileSync(STARTUP_DEBUG, `gpu-features-error ${error?.stack || error}\n`);
+  }
   wireDevices(session.defaultSession);
   createWindow();
+  startSam31Server();
 
   // Never reuse a leftover server — it serves the build that existed when it
   // started, which silently runs stale code after every update.
@@ -238,6 +314,26 @@ app.whenReady().then(async () => {
 
   if (await waitForServer(90_000)) {
     win.loadURL(APP_URL);
+    // Feature status can be provisional before a renderer has created a GL
+    // context. Sample it again after the app is loaded, including the actual
+    // renderer's WebGL vendor/renderer, so the startup diagnosis reflects the
+    // path MediaPipe will use rather than only the initial GPU process state.
+    setTimeout(async () => {
+      if (!win || win.isDestroyed()) return;
+      try {
+        const rendererGpu = await win.webContents.executeJavaScript(`(() => {
+          const canvas = document.createElement('canvas');
+          const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+          if (!gl) return { available: false };
+          const ext = gl.getExtension('WEBGL_debug_renderer_info');
+          return { available: true, vendor: ext ? gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) : '', renderer: ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : '' };
+        })()`);
+        fs.appendFileSync(STARTUP_DEBUG, `gpu-features-after-load ${JSON.stringify(app.getGPUFeatureStatus())}\n`);
+        fs.appendFileSync(STARTUP_DEBUG, `renderer-webgl ${JSON.stringify(rendererGpu)}\n`);
+      } catch (error) {
+        fs.appendFileSync(STARTUP_DEBUG, `renderer-gpu-error ${error?.stack || error}\n`);
+      }
+    }, 2000);
   } else {
     win.loadURL(splash('The app server did not start. Close this window and try again.'));
   }
