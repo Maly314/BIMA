@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { addCaptureAsset, addRecording, getCalibration, newId, type Calibration } from "./recordings";
-import { CAPTURE_SCHEMA_VERSION, captureDurationMs, captureElapsedMs, captureEpochMs, type CaptureRun } from "./capture-sync";
+import { CAPTURE_SCHEMA_VERSION, captureElapsedMs, captureEpochMs, type CaptureRun } from "./capture-sync";
 import { ageWeeks, clinicalAgeMetadata } from "./session-domain";
 import { parseTeensyDisplayState, writeTeensyDisplayState, type TeensyRequestedState } from "./teensy-control";
 import { addClockPoint, newClockFit, parseDeviceClockLine, parseInvalidImuLine, solveClockFit, type DeviceClockStamp, calibratedMovement, calibrationIsUsable, parseImuLine, type ImuSample } from "./sensor-calibration";
