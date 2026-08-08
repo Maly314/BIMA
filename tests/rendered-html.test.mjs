@@ -28,9 +28,10 @@ test("server renders the movement capture application", async () => {
 });
 
 test("hand capture includes synchronized hand, sensor, and privacy-preserving recording support", async () => {
-  const [page, recordings, worker, sam31Client, cameraConfig] = await Promise.all([
+  const [page, recordingTypes, recordingDatabase, worker, sam31Client, cameraConfig] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/recordings.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/recording-types.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/recording-database.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/pose-worker.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/sam31-client.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/camera-config.ts", import.meta.url), "utf8"),
@@ -118,11 +119,11 @@ test("hand capture includes synchronized hand, sensor, and privacy-preserving re
   assert.doesNotMatch(sam31Service, /(?:import|from)\s+.*mediapipe/i);
   assert.match(desktop, /startSam31Server/);
   assert.match(page, /Tracking output is experimental and is not a diagnosis/);
-  assert.match(recordings, /sidecarBlob\?: Blob/);
-  assert.match(recordings, /rawBlob\?: Blob/);
-  assert.match(recordings, /captureSessionId\?: string/);
-  assert.match(recordings, /capture-sessions/);
-  assert.match(recordings, /"pose"/);
+  assert.match(recordingTypes, /sidecarBlob\?: Blob/);
+  assert.match(recordingTypes, /rawBlob\?: Blob/);
+  assert.match(recordingTypes, /captureSessionId\?: string/);
+  assert.match(recordingDatabase, /capture-sessions/);
+  assert.match(recordingTypes, /"pose"/);
 });
 
 test("four sensors are labelled by limb and bound to fixed physical IMUs", async () => {
