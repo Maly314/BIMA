@@ -137,6 +137,29 @@ def _decoded_frame_count(video_path: Path) -> int:
     return frame_count
 
 
+def _source_video_timing(video_path: Path) -> tuple[int, float]:
+    ffprobe = shutil.which("ffprobe")
+    if not ffprobe:
+        raise RuntimeError("FFprobe is required to inspect recorded video timing.")
+    probe = subprocess.run(
+        [ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries", "frame=best_effort_timestamp_time", "-of", "json", str(video_path)],
+        capture_output=True,
+        timeout=120,
+        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+    )
+    if probe.returncode != 0:
+        raise RuntimeError(f"Recorded video timing probe failed: {probe.stderr.decode(errors='replace').strip()}")
+    frames = json.loads(probe.stdout or b"{}").get("frames", [])
+    timestamps = [float(frame["best_effort_timestamp_time"]) for frame in frames if frame.get("best_effort_timestamp_time") is not None]
+    frame_count = len(frames)
+    if frame_count < 1:
+        raise RuntimeError("Recorded video contained no decodable frames.")
+    fps = (len(timestamps) - 1) / (timestamps[-1] - timestamps[0]) if len(timestamps) > 1 and timestamps[-1] > timestamps[0] else 30.0
+    if not (1 <= fps <= 120):
+        fps = 30.0
+    return frame_count, fps
+
+
 def _validate_encoded_video(video_path: Path, expected_frames: int) -> None:
     ffprobe = shutil.which("ffprobe")
     ffmpeg = shutil.which("ffmpeg")
@@ -177,14 +200,15 @@ def _checkpoint_path() -> Path:
 def _release_loaded_model() -> None:
     """Release the service's live-inference model before isolated video work."""
     global _model
-    import gc
-    import torch
-
     with _model_lock:
         loaded = _model
         _model = None
-    if loaded is not None:
-        del loaded
+    if loaded is None:
+        return
+    import gc
+    import torch
+
+    del loaded
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -646,9 +670,6 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
     two-second chunk below uses the exact native add_prompt/propagate API, but
     releases its state before loading the next chunk.
     """
-    import cv2
-    import numpy as np
-
     job = _full_video_jobs[job_id]
     output_path = job_dir / "tracked.mp4"
     encoder: subprocess.Popen[bytes] | None = None
@@ -658,18 +679,10 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
         with _video_process_lock:
             started = time.perf_counter()
             job.update({"phase": "preparing-isolated-workers", "progress": 1})
-            capture = cv2.VideoCapture(str(source_path))
-            if not capture.isOpened():
-                raise RuntimeError("Recorded video could not be decoded for native SAM propagation.")
-            fps = float(capture.get(cv2.CAP_PROP_FPS))
-            if not (1 <= fps <= 120):
-                fps = 30.0
-            # MediaRecorder WebM files can expose a bogus negative
-            # CAP_PROP_FRAME_COUNT on Windows. Count decoded frames with
-            # FFprobe so chunk boundaries and final integrity checks share one
-            # authoritative value.
-            source_frame_count = _decoded_frame_count(source_path)
-            capture.release()
+            # Do not initialize OpenCV in this parent process before the SAM
+            # workers run. Its Windows decoder state can prevent a fresh child
+            # process from opening an otherwise valid chunk.
+            source_frame_count, fps = _source_video_timing(source_path)
             job.update({"phase": "preparing-video", "progress": 2, "frameCount": source_frame_count, "sourceFps": round(fps, 3)})
 
             ffmpeg = shutil.which("ffmpeg")
@@ -731,17 +744,8 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
             # launching a worker; otherwise both processes compete for 8 GB.
             _release_loaded_model()
 
-            output_path = job_dir / "tracked.mp4"
-            encoder = subprocess.Popen(
-                _video_encoder_command(ffmpeg, width, height, fps, output_path),
-                stdin=subprocess.PIPE,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE,
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-            )
-            colors = [(193, 210, 36), (102, 209, 255), (255, 128, 128), (180, 120, 255)]
-            rendered = 0
-            sidecar_frames = []
+            processed = 0
+            chunk_result_paths: list[Path] = []
             for chunk_number, (chunk_path, expected_chunk_frames) in enumerate(zip(chunk_paths, chunk_counts), start=1):
                 job.update({"phase": f"tracking-chunk-{chunk_number}-of-{len(chunk_paths)}", "chunk": chunk_number})
                 chunk_result_path = job_dir / f"chunk-{chunk_number:05d}-masks.json"
@@ -764,9 +768,33 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
                     details = worker.stderr.decode(errors="replace").strip()
                     raise RuntimeError(f"SAM chunk {chunk_number}/{len(chunk_paths)} failed in its isolated GPU worker: {details[-3000:]}")
                 tracked = {int(index): instances for index, instances in json.loads(chunk_result_path.read_text(encoding="utf-8")).items()}
-                processed = rendered + len(tracked)
-                job.update({"processedFrames": processed, "progress": min(94, 6 + round(88 * processed / max(1, frame_count)))})
+                if len(tracked) != expected_chunk_frames:
+                    raise RuntimeError(f"SAM chunk {chunk_number} returned incomplete tracking ({len(tracked)}/{expected_chunk_frames} frames).")
+                chunk_result_paths.append(chunk_result_path)
+                processed += len(tracked)
+                job.update({"processedFrames": processed, "progress": min(84, 6 + round(78 * processed / max(1, frame_count)))})
+                print(f"[sam31-full] job={job_id} chunk={chunk_number}/{len(chunk_paths)} tracking complete", flush=True)
 
+            # Only after every CUDA worker has exited do we initialize OpenCV
+            # and the final encoder in the parent process. This prevents parent
+            # decoder/encoder contexts from leaking into the tracking phase.
+            import cv2
+            import numpy as np
+
+            output_path = job_dir / "tracked.mp4"
+            encoder = subprocess.Popen(
+                _video_encoder_command(ffmpeg, width, height, fps, output_path),
+                stdin=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+            )
+            colors = [(193, 210, 36), (102, 209, 255), (255, 128, 128), (180, 120, 255)]
+            rendered = 0
+            sidecar_frames = []
+            for chunk_number, (chunk_path, expected_chunk_frames, chunk_result_path) in enumerate(zip(chunk_paths, chunk_counts, chunk_result_paths), start=1):
+                job.update({"phase": f"rendering-chunk-{chunk_number}-of-{len(chunk_paths)}", "progress": min(96, 85 + round(11 * rendered / max(1, frame_count)))})
+                tracked = {int(index): instances for index, instances in json.loads(chunk_result_path.read_text(encoding="utf-8")).items()}
                 capture = cv2.VideoCapture(str(chunk_path))
                 local_index = 0
                 while True:
@@ -797,7 +825,7 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
                 capture.release()
                 if local_index != expected_chunk_frames:
                     raise RuntimeError(f"Video chunk {chunk_number} decoded incompletely ({local_index}/{expected_chunk_frames} frames).")
-                print(f"[sam31-full] job={job_id} chunk={chunk_number}/{len(chunk_paths)} frames={local_index} complete", flush=True)
+                print(f"[sam31-full] job={job_id} chunk={chunk_number}/{len(chunk_paths)} frames={local_index} rendered", flush=True)
 
             job.update({"phase": "finalizing-video", "progress": 97})
             if encoder.stdin:
