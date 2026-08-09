@@ -148,6 +148,7 @@ export default function VideoView({ session, captureRun, onReadyChange, onSaved,
   const [downloadUrl, setDownloadUrl] = useState("");
   const [rawDownloadUrl, setRawDownloadUrl] = useState("");
   const [trackingDownloadUrl, setTrackingDownloadUrl] = useState("");
+  const [trackingDownloadFilename, setTrackingDownloadFilename] = useState("");
   const [downloadBaseName, setDownloadBaseName] = useState("movement-pose");
   const [downloadFilename, setDownloadFilename] = useState("movement-pose.webm");
   const [trackingFps, setTrackingFps] = useState(0);
@@ -800,7 +801,7 @@ export default function VideoView({ session, captureRun, onReadyChange, onSaved,
     }
   };
   const selectInferenceMode = async (mode: InferenceMode) => {
-    if (mode === inferenceModeRef.current || recordingRef.current) return;
+    if (mode === inferenceModeRef.current || recordingRef.current || videoProcessing) return;
     stopInferencePipeline();
     inferenceModeRef.current = mode;
     setInferenceMode(mode);
@@ -969,7 +970,11 @@ export default function VideoView({ session, captureRun, onReadyChange, onSaved,
           // and contributed directly to Electron's renderer being evicted.
           stream.getTracks().forEach((track)=>track.stop());
           videoTrackRef.current = null;
+          streamRef.current?.getTracks().forEach((track)=>track.stop());
+          streamRef.current = null;
           if (videoRef.current) videoRef.current.srcObject = null;
+          cameraStateRef.current = "off";
+          setCameraState("off");
         }
         const captureSource = captureSourceRef.current;
         const baseName=`patient-${session.patientNumber}-${session.suspected?"susp":"non"}-wk${ageWeeks(session)}-${run.id.slice(0,8)}`;
@@ -987,6 +992,7 @@ export default function VideoView({ session, captureRun, onReadyChange, onSaved,
         let samProcessingMs = 0;
         let samKeyframes = 0;
         let processingError = "";
+        let durableSamJobId = "";
         if (savedMode === "sam31") {
           setVideoProcessing(true);
           setStatus("SAM 3.1 post-processing · starting");
@@ -996,6 +1002,7 @@ export default function VideoView({ session, captureRun, onReadyChange, onSaved,
             // GPU-process loss can no longer erase the captured source video.
             await addRecording(provisionalSamRecording);
             const processed = await processSamRecordedVideo(blob, run, async (samJobId) => {
+              durableSamJobId = samJobId;
               await addRecording({ ...provisionalSamRecording, samJobId, samPipelineVersion:"sam31-native-v12" });
             });
             frames = processed.frames;
@@ -1005,8 +1012,9 @@ export default function VideoView({ session, captureRun, onReadyChange, onSaved,
             samKeyframes = processed.samKeyframes;
             setStatus(`Annotated video saved · ${frames.length} tracked frames`);
           } catch (error) {
-            if (error instanceof DOMException && error.name === "AbortError") { setVideoProcessing(false); return; }
+            if (error instanceof DOMException && error.name === "AbortError" && durableSamJobId) { setVideoProcessing(false); return; }
             processingError = error instanceof Error ? error.message : "SAM 3.1 post-processing failed";
+            if (error instanceof DOMException && error.name === "AbortError") processingError = "SAM processing was interrupted before a recoverable job was created. The raw video was preserved.";
             setModelError(processingError);
             setStatus("Video saved · SAM post-processing failed");
           }
@@ -1033,13 +1041,13 @@ export default function VideoView({ session, captureRun, onReadyChange, onSaved,
         const rawFilename = savedMode === "sam31" && rawBlob ? `${baseName}-sam31-raw.webm` : undefined;
         const sidecarFilename = `${baseName}-${savedMode === "sam31" ? "segments" : "landmarks"}.json`;
         const annotationFailed = savedMode === "sam31" && Boolean(processingError);
-        setDownloadBaseName(baseName); setDownloadFilename(filename); setDownloadUrl(annotationFailed ? "" : URL.createObjectURL(savedBlob)); setRawDownloadUrl(annotationFailed ? URL.createObjectURL(blob) : rawBlob ? URL.createObjectURL(rawBlob) : ""); setTrackingDownloadUrl(URL.createObjectURL(sidecar));
+        setDownloadBaseName(baseName); setDownloadFilename(filename); setDownloadUrl(annotationFailed ? "" : URL.createObjectURL(savedBlob)); setRawDownloadUrl(annotationFailed ? URL.createObjectURL(blob) : rawBlob ? URL.createObjectURL(rawBlob) : ""); setTrackingDownloadUrl(URL.createObjectURL(sidecar)); setTrackingDownloadFilename(sidecarFilename);
         stream.getTracks().forEach((track)=>track.stop());
         videoTrackRef.current = null;
         addRecording({ id:recordingId, patientNumber:session.patientNumber, suspected:session.suspected, ageYears:session.ageYears, ageMonths:session.ageMonths, ageDays:session.ageDays, ...clinicalAgeMetadata(session), studyDate:session.studyDate, weightKg:session.weightKg, studyId:run.studyId, note:run.note, kind:"pose", date:stoppedAt, blob:savedBlob, filename, size:savedBlob.size + (rawBlob?.size ?? 0), rawBlob, rawFilename, annotationStatus:savedMode === "sam31" ? (processingError ? "failed" : "complete") : undefined, processingError:processingError || undefined, thumbnail:poseCanvasRef.current?.toDataURL("image/png"), sidecarBlob:sidecar, sidecarFilename, captureSessionId:captureSource === "sync" ? run.id : undefined, sync:{ schemaVersion:CAPTURE_SCHEMA_VERSION, clock:"performance-time-origin", startedAtEpochMs:run.startedAtEpochMs, streamStartOffsetMs:recorderStartedOffsetRef.current, sampleCount:frames.length } })
-          .then(() => captureSource === "sync" ? addCaptureAsset(run.id, { recordingId, kind:"pose", filename, sidecarFilename, sampleCount:frames.length, streamStartOffsetMs:recorderStartedOffsetRef.current, size:savedBlob.size + (rawBlob?.size ?? 0) + sidecar.size }) : undefined)
-          .then(() => { setVideoProcessing(false); if (captureSource === "sync") onSaved("pose", true); })
-          .catch(() => { setVideoProcessing(false); if (captureSource === "sync") onSaved("pose", false); });
+          .then(() => captureSource === "sync" ? addCaptureAsset(run.id, { recordingId, kind:"pose", filename, sidecarFilename, sampleCount:frames.length, streamStartOffsetMs:recorderStartedOffsetRef.current, size:savedBlob.size + (rawBlob?.size ?? 0) + sidecar.size, metadata:savedMode === "sam31" ? { annotationStatus:annotationFailed ? "failed" : "complete", processingError:processingError || undefined } : undefined }) : undefined)
+          .then(() => { setVideoProcessing(false); if (savedMode === "sam31") void enableCameraRef.current(); if (captureSource === "sync") onSaved("pose", !annotationFailed); })
+          .catch(() => { setVideoProcessing(false); if (savedMode === "sam31") void enableCameraRef.current(); if (captureSource === "sync") onSaved("pose", false); });
         captureRef.current = null;
         if (captureSource === "video") setVideoOnlyRun(null);
       };
@@ -1086,8 +1094,8 @@ export default function VideoView({ session, captureRun, onReadyChange, onSaved,
       </div>
       <aside className="video-panel">
         <div className="inference-mode-switch" role="group" aria-label="Video inference model">
-          <button type="button" className={inferenceMode === "pose" ? "active" : ""} aria-pressed={inferenceMode === "pose"} disabled={recording} onClick={() => void selectInferenceMode("pose")}>Hand pose</button>
-          <button type="button" className={inferenceMode === "sam31" ? "active experimental" : "experimental"} aria-pressed={inferenceMode === "sam31"} disabled={recording} onClick={() => void selectInferenceMode("sam31")}><span>Experimental</span>SAM 3.1</button>
+          <button type="button" className={inferenceMode === "pose" ? "active" : ""} aria-pressed={inferenceMode === "pose"} disabled={recording || videoProcessing} onClick={() => void selectInferenceMode("pose")}>Hand pose</button>
+          <button type="button" className={inferenceMode === "sam31" ? "active experimental" : "experimental"} aria-pressed={inferenceMode === "sam31"} disabled={recording || videoProcessing} onClick={() => void selectInferenceMode("sam31")}><span>Experimental</span>SAM 3.1</button>
         </div>
         {inferenceMode === "sam31" && <button type="button" className={`sam-record-button ${videoOnlyRun?.active ? "recording" : ""}`} onClick={() => videoOnlyRun?.active ? stopVideoOnlyRecording() : void startVideoOnlyRecording()} disabled={videoProcessing || (!!captureRun && !videoOnlyRun?.active) || cameraState === "starting"}>{videoOnlyRun?.active ? "Stop video" : videoProcessing ? "Processing video…" : "Record video"}</button>}
         <div><span className="eyebrow">{inferenceMode === "sam31" ? "Segmentation tracking" : "Hand tracking"}</span><h2>Hand movement</h2><p>{inferenceMode === "sam31" ? "Live preview is optional. Record the smooth camera video first; SAM 3.1 analyzes it afterward into hand masks, boxes, and centroids." : "The yellow skeleton is stabilized for viewing. Cyan dots show each unsmoothed measurement; recording saves those raw timestamped landmarks."}</p></div>
@@ -1096,7 +1104,7 @@ export default function VideoView({ session, captureRun, onReadyChange, onSaved,
         <div className="capture-guide"><strong>Before recording</strong><span>Keep the hands visible and avoid moving the camera.</span></div>
         <p className="privacy-note">{inferenceMode === "sam31" ? "The annotated video, untouched source video, and mask data" : "Pose video and landmark data"} stay on this device. Tracking output is experimental and is not a diagnosis.</p>
       </aside>
-      <footer className="record-bar video-record-bar"><div className="timer">{elapsed}</div><div className="ready-state"><span className={`status-dot ${cameraState==="ready"?"connected":""}`} />{status}</div><div className="video-downloads">{downloadUrl && <a className="download-link" href={downloadUrl} download={downloadFilename}>Download annotated video</a>}{rawDownloadUrl && <a className="download-link secondary" href={rawDownloadUrl} download={`${downloadBaseName}-sam31-raw.webm`}>Download raw video</a>}{trackingDownloadUrl && <a className="download-link" href={trackingDownloadUrl} download={`${downloadBaseName}-${inferenceMode === "sam31" ? "segments" : "landmarks"}.json`}>Download tracking data</a>}</div><span className="capture-controlled">{recording ? (inferenceMode === "sam31" ? "Recording raw video · SAM runs after Stop" : "Recording with sensors") : inferenceMode === "sam31" ? "Ready for video-only capture" : "Ready for synchronized capture"}</span></footer>
+      <footer className="record-bar video-record-bar"><div className="timer">{elapsed}</div><div className="ready-state"><span className={`status-dot ${cameraState==="ready"?"connected":""}`} />{status}</div><div className="video-downloads">{downloadUrl && <a className="download-link" href={downloadUrl} download={downloadFilename}>Download annotated video</a>}{rawDownloadUrl && <a className="download-link secondary" href={rawDownloadUrl} download={`${downloadBaseName}-sam31-raw.webm`}>Download raw video</a>}{trackingDownloadUrl && <a className="download-link" href={trackingDownloadUrl} download={trackingDownloadFilename}>Download tracking data</a>}</div><span className="capture-controlled">{recording ? (inferenceMode === "sam31" ? "Recording raw video · SAM runs after Stop" : "Recording with sensors") : videoProcessing ? "SAM 3.1 processing raw video" : inferenceMode === "sam31" ? "Ready for video-only capture" : "Ready for synchronized capture"}</span></footer>
     </section>
   );
 }

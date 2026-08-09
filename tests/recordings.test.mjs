@@ -129,6 +129,33 @@ test("recording persistence preserves session transitions and asset integrity", 
   );
 });
 
+test("a raw-only SAM fallback keeps a synchronized capture incomplete", async () => {
+  const session = makeSession("session-sam-failed");
+  session.status = "processing";
+  await addCaptureSession(session);
+  await addCaptureAsset(session.id, {
+    recordingId: "sensor-good",
+    kind: "sensor",
+    filename: "sensor.csv",
+    sampleCount: 400,
+    streamStartOffsetMs: 0,
+    size: 1_000,
+  });
+  await addCaptureAsset(session.id, {
+    recordingId: "sam-raw-only",
+    kind: "pose",
+    filename: "sam31-raw.webm",
+    sampleCount: 0,
+    streamStartOffsetMs: 5,
+    size: 2_000,
+    metadata: { annotationStatus: "failed", processingError: "worker OOM" },
+  });
+
+  const stored = await getCaptureSession(session.id);
+  assert.equal(stored.status, "processing");
+  assert.equal(stored.assets.find((asset) => asset.kind === "pose").metadata.annotationStatus, "failed");
+});
+
 test("recordings stay newest-first and deletion repairs the owning session", async () => {
   const session = makeSession("session-delete");
   session.assets = [

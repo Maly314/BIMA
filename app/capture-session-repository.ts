@@ -45,7 +45,9 @@ export async function addCaptureAsset(id: string, asset: CaptureAsset): Promise<
         return;
       }
       const assets = [...current.assets.filter((item) => item.kind !== asset.kind), asset];
-      const complete = assets.some((item) => item.kind === "sensor") && assets.some((item) => item.kind === "pose");
+      const complete = assets.some((item) => item.kind === "sensor") && assets.some(
+        (item) => item.kind === "pose" && item.metadata?.annotationStatus !== "failed",
+      );
       store.put({ ...current, assets, status: complete ? "complete" : current.status });
     };
     transaction.oncomplete = () => resolve();

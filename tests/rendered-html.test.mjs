@@ -125,6 +125,10 @@ test("hand capture includes synchronized hand, sensor, and privacy-preserving re
   assert.match(page, /annotationStatus:"processing"/);
   assert.match(page, /await addRecording\(provisionalSamRecording\)/);
   assert.match(page, /if \(savedMode === "sam31"\)[\s\S]*?videoRef\.current\.srcObject = null/);
+  assert.match(videoView, /recordingRef\.current \|\| videoProcessing/);
+  assert.equal((videoView.match(/disabled=\{recording \|\| videoProcessing\}/g) ?? []).length, 2);
+  assert.match(videoView, /onSaved\("pose", !annotationFailed\)/);
+  assert.match(videoView, /streamRef\.current\?\.getTracks\(\)\.forEach\(\(track\)=>track\.stop\(\)\)/);
   assert.match(page, /samJobId, samPipelineVersion:"sam31-native-v12"/);
   assert.match(landing, /recoverSam31Recording/);
   assert.match(sam31Recovery, /recoveredAfterRendererRestart: true/);
