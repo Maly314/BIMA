@@ -322,6 +322,15 @@ app.whenReady().then(async () => {
   wireDevices(session.defaultSession);
   createWindow();
   startSam31Server();
+  if (process.env.BIMA_QUIT_PROBE_FILE) {
+    const marker = process.env.BIMA_QUIT_PROBE_FILE;
+    const quitProbe = setInterval(() => {
+      if (!fs.existsSync(marker)) return;
+      clearInterval(quitProbe);
+      fs.appendFileSync(STARTUP_DEBUG, 'quit-probe-triggered\n');
+      app.quit();
+    }, 100);
+  }
 
   // Never reuse a leftover server — it serves the build that existed when it
   // started, which silently runs stale code after every update.
