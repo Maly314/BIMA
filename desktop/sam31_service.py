@@ -268,7 +268,6 @@ def _binary_rle(mask: Any) -> list[int]:
 
 def _decode_binary_rle(runs: list[int], width: int, height: int) -> Any:
     """Decode the compact alternating-run representation used by the web UI."""
-    import numpy as np
 
     flat = np.zeros(width * height, dtype=np.uint8)
     cursor = 0
@@ -659,37 +658,35 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
             width, height = 640, 360
             chunks_dir = job_dir / "chunks"
             chunks_dir.mkdir()
-            # Build exact frame-count chunks. FFmpeg's segment muxer cuts only
-            # at usable keyframes and had silently produced 15-frame segments
-            # from an 8-frame target, enough to OOM this checkpoint.
-            source_capture = cv2.VideoCapture(str(source_path))
-            writer = None
-            prepared_frames = 0
-            while True:
-                ok, frame = source_capture.read()
-                if not ok:
-                    break
-                if prepared_frames % FULL_VIDEO_CHUNK_FRAMES == 0:
-                    if writer is not None:
-                        writer.release()
-                    chunk_index = prepared_frames // FULL_VIDEO_CHUNK_FRAMES
-                    chunk_path = chunks_dir / f"chunk-{chunk_index:05d}.mp4"
-                    writer = cv2.VideoWriter(str(chunk_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
-                    if not writer.isOpened():
-                        raise RuntimeError("Could not create deterministic SAM video chunks.")
-                scale = min(width / frame.shape[1], height / frame.shape[0])
-                resized_width = max(1, round(frame.shape[1] * scale))
-                resized_height = max(1, round(frame.shape[0] * scale))
-                resized = cv2.resize(frame, (resized_width, resized_height), interpolation=cv2.INTER_AREA)
-                prepared = np.zeros((height, width, 3), dtype=np.uint8)
-                x = (width - resized_width) // 2
-                y = (height - resized_height) // 2
-                prepared[y:y + resized_height, x:x + resized_width] = resized
-                writer.write(prepared)
-                prepared_frames += 1
-            source_capture.release()
-            if writer is not None:
-                writer.release()
+            # Build exact frame-count H.264 chunks. OpenCV's MP4V writer can
+            # produce files that its parent process reads but a fresh Windows
+            # worker cannot open after CUDA/model initialization. FFmpeg gives
+            # each four-frame chunk a deterministic keyframe and portable
+            # yuv420p container while correcting MediaRecorder's bogus 1000-fps
+            # metadata.
+            chunk_pattern = chunks_dir / "chunk-%05d.mp4"
+            split_frames = ",".join(str(index) for index in range(FULL_VIDEO_CHUNK_FRAMES, source_frame_count, FULL_VIDEO_CHUNK_FRAMES))
+            chunk_command = [
+                ffmpeg, "-y", "-hide_banner", "-loglevel", "error",
+                "-i", str(source_path),
+                "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:black",
+                "-r", f"{fps:.6f}", "-an", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18",
+                "-pix_fmt", "yuv420p", "-g", str(FULL_VIDEO_CHUNK_FRAMES),
+                "-keyint_min", str(FULL_VIDEO_CHUNK_FRAMES), "-sc_threshold", "0",
+                "-force_key_frames", f"expr:gte(n,n_forced*{FULL_VIDEO_CHUNK_FRAMES})",
+            ]
+            if split_frames:
+                chunk_command.extend(["-f", "segment", "-segment_frames", split_frames, "-reset_timestamps", "1", str(chunk_pattern)])
+            else:
+                chunk_command.append(str(chunks_dir / "chunk-00000.mp4"))
+            prepared = subprocess.run(
+                chunk_command,
+                capture_output=True,
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+            )
+            if prepared.returncode != 0:
+                details = prepared.stderr.decode(errors="replace").strip()
+                raise RuntimeError(f"Could not create deterministic SAM video chunks: {details[-2000:]}")
             chunk_paths = sorted(chunks_dir.glob("chunk-*.mp4"))
             if not chunk_paths:
                 raise RuntimeError("Recorded video contained no decodable frames.")
@@ -698,9 +695,11 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
                 chunk_capture = cv2.VideoCapture(str(chunk_path))
                 chunk_counts.append(int(chunk_capture.get(cv2.CAP_PROP_FRAME_COUNT)))
                 chunk_capture.release()
-            if any(count > FULL_VIDEO_CHUNK_FRAMES for count in chunk_counts):
-                raise RuntimeError(f"Internal chunk-size invariant failed: {max(chunk_counts)} frames exceeds {FULL_VIDEO_CHUNK_FRAMES}.")
+            if any(count < 1 or count > FULL_VIDEO_CHUNK_FRAMES for count in chunk_counts):
+                raise RuntimeError(f"Internal chunk-size invariant failed: expected 1-{FULL_VIDEO_CHUNK_FRAMES} frames, got {chunk_counts}.")
             frame_count = sum(chunk_counts)
+            if frame_count != source_frame_count:
+                raise RuntimeError(f"Internal chunk frame-count mismatch: source={source_frame_count}, chunks={frame_count}.")
             job.update({"phase": "prepared-video", "progress": 5, "frameCount": frame_count, "chunkCount": len(chunk_paths)})
 
             # `/load` may have populated the parent service for the live
