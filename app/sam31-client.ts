@@ -29,6 +29,11 @@ type ProcessOptions = {
 
 type ResumeOptions = Omit<ProcessOptions, "onJobStarted">;
 
+export async function acknowledgeSam31Job(jobId: string, fetcher: typeof fetch = fetch, serviceUrl = SAM_SERVICE_URL) {
+  const response = await fetcher(`${serviceUrl}/result/${jobId}/ack`, { method: "POST" });
+  if (!response.ok) throw new Error("SAM result cleanup could not be acknowledged");
+}
+
 async function jsonOrEmpty<T>(response: Response): Promise<T> {
   return response.json().catch(() => ({} as T));
 }
@@ -36,10 +41,28 @@ async function jsonOrEmpty<T>(response: Response): Promise<T> {
 async function validatedMp4(response: Response) {
   if (!response.ok) throw new Error("The annotated SAM video could not be retrieved");
   const blob = await response.blob();
-  const header = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
-  const hasFtyp = header.length >= 8
-    && header[4] === 0x66 && header[5] === 0x74 && header[6] === 0x79 && header[7] === 0x70;
-  if (!response.headers.get("content-type")?.toLowerCase().startsWith("video/mp4") || !hasFtyp) {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const boxes = new Set<string>();
+  let offset = 0;
+  while (offset + 8 <= bytes.length) {
+    let size = view.getUint32(offset);
+    const type = String.fromCharCode(...bytes.subarray(offset + 4, offset + 8));
+    let headerSize = 8;
+    if (size === 1 && offset + 16 <= bytes.length) {
+      const extended = view.getBigUint64(offset + 8);
+      if (extended > BigInt(Number.MAX_SAFE_INTEGER)) break;
+      size = Number(extended);
+      headerSize = 16;
+    } else if (size === 0) {
+      size = bytes.length - offset;
+    }
+    if (size < headerSize || offset + size > bytes.length) break;
+    boxes.add(type);
+    offset += size;
+  }
+  const structurallyComplete = boxes.has("ftyp") && boxes.has("moov") && boxes.has("mdat") && offset === bytes.length;
+  if (!response.headers.get("content-type")?.toLowerCase().startsWith("video/mp4") || !structurallyComplete) {
     throw new Error("The SAM service returned an invalid annotated MP4; the raw recording was preserved");
   }
   return blob;

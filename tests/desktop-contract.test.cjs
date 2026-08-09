@@ -46,4 +46,6 @@ test('camera and serial permissions are restricted to the BIMA application origi
   assert.equal(isAllowedPermission('serial', `${appUrl}/capture`, appUrl), true);
   assert.equal(isAllowedPermission('geolocation', `${appUrl}/`, appUrl), false);
   assert.equal(isAllowedPermission('camera', 'https://example.com/', appUrl), false);
+  assert.equal(isAllowedPermission('serial', 'http://127.0.0.1:48200/hostile', appUrl), false);
+  assert.equal(isAllowedPermission('camera', 'http://127.0.0.1:4820.evil.example/', appUrl), false);
 });

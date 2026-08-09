@@ -28,8 +28,12 @@ from typing import Any
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("BIMA_SAM31_PORT", "4831"))
+APP_ORIGIN = os.environ.get("BIMA_APP_ORIGIN", "http://127.0.0.1:4820").rstrip("/")
 PIPELINE_VERSION = "sam31-native-v12"
 ROOT = Path(__file__).resolve().parents[1]
+SERVICE_TEMP_ROOT = Path(os.environ.get("BIMA_SAM31_TEMP_ROOT", Path(tempfile.gettempdir()) / f"bima-sam31-service-{PORT}"))
+shutil.rmtree(SERVICE_TEMP_ROOT, ignore_errors=True)
+SERVICE_TEMP_ROOT.mkdir(parents=True, exist_ok=True)
 CHECKPOINT_CANDIDATES = [
     Path(os.environ["BIMA_SAM31_CHECKPOINT"]) if os.environ.get("BIMA_SAM31_CHECKPOINT") else None,
     ROOT / "local-models" / "sam3" / "checkpoints" / "sam3.1_multiplex.pt",
@@ -46,6 +50,7 @@ _last_prompt_monotonic = 0.0
 _video_process_lock = threading.Lock()
 _video_results: dict[str, dict[str, Any]] = {}
 _full_video_jobs: dict[str, dict[str, Any]] = {}
+_video_results_lock = threading.Lock()
 HAND_LINKS = (
     (0, 1), (1, 2), (2, 3), (3, 4),
     (0, 5), (5, 6), (6, 7), (7, 8),
@@ -65,6 +70,79 @@ FULL_MASK_HEIGHT = 360
 FULL_VIDEO_CHUNK_FRAMES = max(1, int(os.environ.get("BIMA_SAM31_CHUNK_FRAMES", "4")))
 GPU_MEMORY_FRACTION = min(0.95, max(0.50, float(os.environ.get("BIMA_SAM31_GPU_MEMORY_FRACTION", "0.75"))))
 MODEL_WEIGHT_DTYPE = os.environ.get("BIMA_SAM31_WEIGHT_DTYPE", "backbones-bfloat16").lower()
+RESULT_TTL_SECONDS = max(60, int(os.environ.get("BIMA_SAM31_RESULT_TTL_SECONDS", "3600")))
+MAX_VIDEO_RESULTS = max(1, int(os.environ.get("BIMA_SAM31_MAX_RESULTS", "8")))
+CHUNK_WORKER_PATH = Path(os.environ.get("BIMA_SAM31_CHUNK_WORKER", Path(__file__).with_name("sam31_chunk_worker.py")))
+CHUNK_WORKER_TIMEOUT_SECONDS = max(1, int(os.environ.get("BIMA_SAM31_WORKER_TIMEOUT_SECONDS", "600")))
+VIDEO_ENCODER = os.environ.get("BIMA_SAM31_VIDEO_ENCODER", "h264_nvenc")
+
+
+def _remove_video_result(job_id: str) -> None:
+    with _video_results_lock:
+        stored = _video_results.pop(job_id, None)
+        _full_video_jobs.pop(job_id, None)
+    if stored:
+        _remove_tree_with_retries(stored["directory"])
+
+
+def _remove_tree_with_retries(directory: Path, attempts: int = 20) -> None:
+    for _attempt in range(attempts):
+        shutil.rmtree(directory, ignore_errors=True)
+        if not directory.exists():
+            return
+        time.sleep(0.1)
+    raise RuntimeError(f"Could not remove SAM temporary data at {directory}")
+
+
+def _prune_video_results() -> None:
+    now = time.time()
+    with _video_results_lock:
+        ordered = sorted(_video_results.items(), key=lambda item: float(item[1].get("created", 0)))
+        expired = [job_id for job_id, stored in ordered if now - float(stored.get("created", 0)) > RESULT_TTL_SECONDS]
+        overflow = [job_id for job_id, _stored in ordered[:-MAX_VIDEO_RESULTS]] if len(ordered) > MAX_VIDEO_RESULTS else []
+    for job_id in dict.fromkeys([*expired, *overflow]):
+        _remove_video_result(job_id)
+
+
+def _video_encoder_command(ffmpeg: str, width: int, height: int, fps: float, output_path: Path) -> list[str]:
+    command = [
+        ffmpeg, "-y", "-hide_banner", "-loglevel", "error",
+        "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{width}x{height}",
+        "-r", f"{fps:.6f}", "-i", "-", "-an", "-c:v", VIDEO_ENCODER,
+    ]
+    if VIDEO_ENCODER == "h264_nvenc":
+        command.extend(["-profile:v", "high", "-pix_fmt", "yuv420p", "-preset", "p4", "-tune", "hq", "-rc", "vbr", "-cq", "20", "-b:v", "0"])
+    else:
+        command.extend(["-profile:v", "high", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-crf", "20"])
+    command.extend(["-movflags", "+faststart", str(output_path)])
+    return command
+
+
+def _validate_encoded_video(video_path: Path, expected_frames: int) -> None:
+    ffprobe = shutil.which("ffprobe")
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffprobe or not ffmpeg:
+        raise RuntimeError("FFprobe and FFmpeg are required to validate the annotated video.")
+    probe = subprocess.run(
+        [ffprobe, "-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries", "stream=codec_name,pix_fmt,nb_read_frames", "-of", "json", str(video_path)],
+        capture_output=True,
+        timeout=120,
+        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+    )
+    if probe.returncode != 0:
+        raise RuntimeError(f"Annotated video probe failed: {probe.stderr.decode(errors='replace').strip()}")
+    streams = json.loads(probe.stdout or b"{}").get("streams", [])
+    stream = streams[0] if streams else {}
+    if stream.get("codec_name") != "h264" or stream.get("pix_fmt") != "yuv420p" or int(stream.get("nb_read_frames", 0)) != expected_frames:
+        raise RuntimeError(f"Annotated video integrity mismatch: {stream!r}; expected {expected_frames} frames.")
+    decoded = subprocess.run(
+        [ffmpeg, "-v", "error", "-i", str(video_path), "-f", "null", "-"],
+        capture_output=True,
+        timeout=120,
+        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+    )
+    if decoded.returncode != 0:
+        raise RuntimeError(f"Annotated video decode failed: {decoded.stderr.decode(errors='replace').strip()}")
 
 
 def _checkpoint_path() -> Path:
@@ -293,7 +371,7 @@ def _process_video(video_bytes: bytes) -> dict[str, Any]:
     with _video_process_lock:
         started = time.perf_counter()
         job_id = uuid.uuid4().hex
-        job_dir = Path(tempfile.mkdtemp(prefix="bima-sam31-"))
+        job_dir = Path(tempfile.mkdtemp(prefix="live-", dir=SERVICE_TEMP_ROOT))
         source_path = job_dir / "source.webm"
         output_path = job_dir / "tracked.mp4"
         source_path.write_bytes(video_bytes)
@@ -555,8 +633,8 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
 
     job = _full_video_jobs[job_id]
     output_path = job_dir / "tracked.mp4"
-    predictor = None
-    open_session_id: str | None = None
+    encoder: subprocess.Popen[bytes] | None = None
+    failure_message = ""
     try:
         print(f"[sam31-full] job={job_id} version={PIPELINE_VERSION} started bytes={source_path.stat().st_size}", flush=True)
         with _video_process_lock:
@@ -565,8 +643,6 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
             capture = cv2.VideoCapture(str(source_path))
             if not capture.isOpened():
                 raise RuntimeError("Recorded video could not be decoded for native SAM propagation.")
-            source_width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH)) or 1280
-            source_height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 720
             fps = float(capture.get(cv2.CAP_PROP_FPS))
             if not (1 <= fps <= 120):
                 fps = 30.0
@@ -634,14 +710,7 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
 
             output_path = job_dir / "tracked.mp4"
             encoder = subprocess.Popen(
-                [
-                    ffmpeg, "-y", "-hide_banner", "-loglevel", "error",
-                    "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{width}x{height}",
-                    "-r", f"{fps:.6f}", "-i", "-", "-an", "-c:v", "h264_nvenc",
-                    "-profile:v", "high", "-pix_fmt", "yuv420p", "-preset", "p4",
-                    "-tune", "hq", "-rc", "vbr", "-cq", "20", "-b:v", "0",
-                    "-movflags", "+faststart", str(output_path),
-                ],
+                _video_encoder_command(ffmpeg, width, height, fps, output_path),
                 stdin=subprocess.PIPE,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
@@ -653,18 +722,21 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
             for chunk_number, (chunk_path, expected_chunk_frames) in enumerate(zip(chunk_paths, chunk_counts), start=1):
                 job.update({"phase": f"tracking-chunk-{chunk_number}-of-{len(chunk_paths)}", "chunk": chunk_number})
                 chunk_result_path = job_dir / f"chunk-{chunk_number:05d}-masks.json"
-                worker = subprocess.run(
-                    [sys.executable, str(Path(__file__).with_name("sam31_chunk_worker.py")), str(chunk_path), str(chunk_result_path)],
-                    capture_output=True,
-                    timeout=600,
-                    env={
-                        **os.environ,
-                        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
-                        "CUDA_MODULE_LOADING": "LAZY",
-                        "BIMA_SAM31_GPU_MEMORY_FRACTION": str(GPU_MEMORY_FRACTION),
-                    },
-                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-                )
+                try:
+                    worker = subprocess.run(
+                        [sys.executable, str(CHUNK_WORKER_PATH), str(chunk_path), str(chunk_result_path)],
+                        capture_output=True,
+                        timeout=CHUNK_WORKER_TIMEOUT_SECONDS,
+                        env={
+                            **os.environ,
+                            "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
+                            "CUDA_MODULE_LOADING": "LAZY",
+                            "BIMA_SAM31_GPU_MEMORY_FRACTION": str(GPU_MEMORY_FRACTION),
+                        },
+                        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                    )
+                except subprocess.TimeoutExpired as exc:
+                    raise RuntimeError(f"SAM chunk {chunk_number}/{len(chunk_paths)} timed out after {CHUNK_WORKER_TIMEOUT_SECONDS} seconds and was terminated.") from exc
                 if worker.returncode != 0 or not chunk_result_path.is_file():
                     details = worker.stderr.decode(errors="replace").strip()
                     raise RuntimeError(f"SAM chunk {chunk_number}/{len(chunk_paths)} failed in its isolated GPU worker: {details[-3000:]}")
@@ -711,6 +783,7 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
             if encoder.returncode != 0 or not output_path.is_file():
                 error = encoder.stderr.read().decode("utf-8", errors="replace") if encoder.stderr else ""
                 raise RuntimeError(f"Native SAM video encoding failed: {error.strip()}")
+            _validate_encoded_video(output_path, rendered)
             result = {
                 "jobId": job_id,
                 "pipelineVersion": PIPELINE_VERSION,
@@ -721,20 +794,43 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
                 "videoMimeType": "video/mp4",
                 "inferenceBackend": "Meta SAM 3.1 native propagate_in_video",
             }
-            _video_results[job_id] = {"directory": job_dir, "video": output_path, "result": result, "created": time.time()}
-            job.update({"phase": "complete", "progress": 100, "status": "complete", "result": result})
+            with _video_results_lock:
+                _video_results[job_id] = {"directory": job_dir, "video": output_path, "result": result, "created": time.time()}
+            job.update({"phase": "complete", "progress": 100, "status": "complete"})
+            _prune_video_results()
             print(f"[sam31-full] job={job_id} complete frames={rendered} processingMs={result['processingMs']}", flush=True)
     except Exception as exc:
-        job.update({"phase": "failed", "status": "failed", "error": str(exc)})
+        failure_message = str(exc)
+        job.update({"phase": "cleaning-up", "status": "running"})
         print(f"[sam31-full] job={job_id} failed error={exc}", flush=True)
         traceback.print_exc()
     finally:
-        pass
+        if encoder is not None and encoder.poll() is None:
+            try:
+                if encoder.stdin and not encoder.stdin.closed:
+                    encoder.stdin.close()
+            except OSError:
+                pass
+            encoder.terminate()
+            try:
+                encoder.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                encoder.kill()
+                encoder.wait(timeout=5)
+        if encoder is not None:
+            for pipe in (encoder.stdin, encoder.stdout, encoder.stderr):
+                if pipe and not pipe.closed:
+                    pipe.close()
+        if job.get("status") != "complete":
+            _remove_tree_with_retries(job_dir)
+        if failure_message:
+            job.update({"phase": "failed", "status": "failed", "error": failure_message, "cleanupComplete": True})
 
 
 def _start_full_video_job(video_bytes: bytes) -> dict[str, Any]:
     job_id = uuid.uuid4().hex
-    job_dir = Path(tempfile.mkdtemp(prefix="bima-sam31-full-"))
+    _prune_video_results()
+    job_dir = Path(tempfile.mkdtemp(prefix="full-", dir=SERVICE_TEMP_ROOT))
     source_path = job_dir / "source.webm"
     source_path.write_bytes(video_bytes)
     _full_video_jobs[job_id] = {
@@ -755,7 +851,7 @@ def _render_landmark_video(video_bytes: bytes, landmark_payload: dict[str, Any])
     import cv2
 
     job_id = uuid.uuid4().hex
-    job_dir = Path(tempfile.mkdtemp(prefix="bima-hands-"))
+    job_dir = Path(tempfile.mkdtemp(prefix="hands-", dir=SERVICE_TEMP_ROOT))
     source_path = job_dir / "source.webm"
     output_path = job_dir / "tracked.mp4"
     source_path.write_bytes(video_bytes)
@@ -977,12 +1073,17 @@ def _infer(jpeg: bytes, force_text: bool = False) -> dict[str, Any]:
 class Handler(BaseHTTPRequestHandler):
     server_version = "BIMA-SAM31/1"
 
+    def _origin_allowed(self) -> bool:
+        origin = self.headers.get("Origin")
+        return origin is None or origin.rstrip("/") == APP_ORIGIN
+
     def _headers(self, status: int = 200, content_type: str = "application/json", content_length: int | None = None) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         if content_length is not None:
             self.send_header("Content-Length", str(content_length))
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Origin", APP_ORIGIN)
+        self.send_header("Vary", "Origin")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, X-BIMA-Landmarks-Length")
         self.send_header("Cache-Control", "no-store")
@@ -993,9 +1094,16 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
 
     def do_OPTIONS(self) -> None:  # noqa: N802
+        if not self._origin_allowed():
+            self._reply({"error": "origin not allowed"}, 403)
+            return
         self._headers(204)
 
     def do_GET(self) -> None:  # noqa: N802
+        if not self._origin_allowed():
+            self._reply({"error": "origin not allowed"}, 403)
+            return
+        _prune_video_results()
         if self.path.startswith("/result/") and self.path.endswith("/status"):
             job_id = self.path.split("/")[2]
             job = _full_video_jobs.get(job_id)
@@ -1046,6 +1154,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         try:
+            if not self._origin_allowed():
+                self._reply({"error": "origin not allowed"}, 403)
+                return
+            if self.path.startswith("/result/") and self.path.endswith("/ack"):
+                job_id = self.path.split("/")[2]
+                if job_id not in _full_video_jobs and job_id not in _video_results:
+                    self._reply({"error": "native SAM job not found"}, 404)
+                    return
+                _remove_video_result(job_id)
+                self._reply({"jobId": job_id, "status": "released"})
+                return
             if self.path == "/load":
                 _load_model()
                 self._reply({"model": "ready", "name": "Meta SAM 3.1", "pipelineVersion": PIPELINE_VERSION})

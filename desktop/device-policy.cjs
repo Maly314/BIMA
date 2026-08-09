@@ -1,7 +1,11 @@
 const ALLOWED_PERMISSIONS = ['media', 'serial', 'camera', 'microphone'];
 
 function isAppUrl(url, appUrl) {
-  return typeof url === 'string' && url.startsWith(appUrl);
+  try {
+    return new URL(url).origin === new URL(appUrl).origin;
+  } catch {
+    return false;
+  }
 }
 
 function isAllowedPermission(permission, url, appUrl) {

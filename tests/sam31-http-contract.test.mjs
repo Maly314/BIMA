@@ -69,3 +69,14 @@ test("unknown SAM routes return the stable JSON 404 contract", async (t) => {
   assert.equal(response.status, 404);
   assert.deepEqual(await response.json(), { error: "not found" });
 });
+
+test("SAM service rejects hostile browser origins while allowing the desktop app", async (t) => {
+  const { port } = await startService(t);
+  const hostile = await fetch(`http://127.0.0.1:${port}/health`, { headers: { origin: "https://hostile.example" } });
+  assert.equal(hostile.status, 403);
+  assert.deepEqual(await hostile.json(), { error: "origin not allowed" });
+
+  const desktop = await fetch(`http://127.0.0.1:${port}/health`, { headers: { origin: "http://127.0.0.1:4820" } });
+  assert.equal(desktop.status, 200);
+  assert.equal(desktop.headers.get("access-control-allow-origin"), "http://127.0.0.1:4820");
+});

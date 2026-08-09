@@ -6,7 +6,7 @@ import { CAPTURE_SCHEMA_VERSION, captureDurationMs, captureElapsedMs, captureEpo
 import { ageWeeks, clinicalAgeMetadata } from "./session-domain";
 import { extrapolateHandsForDisplay, predictHandsForDisplay, type DisplayHandHistory, type TrackedPoint } from "./pose-display";
 import { assessTrackingIntegrity } from "./tracking-integrity";
-import { processSam31Video } from "./sam31-client";
+import { acknowledgeSam31Job, processSam31Video } from "./sam31-client";
 import { CAMERA_DSP_BRIGHTNESS, cameraMediaConstraints, cameraStartErrorMessage } from "./camera-config";
 import type { VideoViewProps } from "./capture-view-types";
 
@@ -1046,6 +1046,7 @@ export default function VideoView({ session, captureRun, onReadyChange, onSaved,
         videoTrackRef.current = null;
         addRecording({ id:recordingId, patientNumber:session.patientNumber, suspected:session.suspected, ageYears:session.ageYears, ageMonths:session.ageMonths, ageDays:session.ageDays, ...clinicalAgeMetadata(session), studyDate:session.studyDate, weightKg:session.weightKg, studyId:run.studyId, note:run.note, kind:"pose", date:stoppedAt, blob:savedBlob, filename, size:savedBlob.size + (rawBlob?.size ?? 0), rawBlob, rawFilename, annotationStatus:savedMode === "sam31" ? (processingError ? "failed" : "complete") : undefined, processingError:processingError || undefined, thumbnail:poseCanvasRef.current?.toDataURL("image/png"), sidecarBlob:sidecar, sidecarFilename, captureSessionId:captureSource === "sync" ? run.id : undefined, sync:{ schemaVersion:CAPTURE_SCHEMA_VERSION, clock:"performance-time-origin", startedAtEpochMs:run.startedAtEpochMs, streamStartOffsetMs:recorderStartedOffsetRef.current, sampleCount:frames.length } })
           .then(() => captureSource === "sync" ? addCaptureAsset(run.id, { recordingId, kind:"pose", filename, sidecarFilename, sampleCount:frames.length, streamStartOffsetMs:recorderStartedOffsetRef.current, size:savedBlob.size + (rawBlob?.size ?? 0) + sidecar.size, metadata:savedMode === "sam31" ? { annotationStatus:annotationFailed ? "failed" : "complete", processingError:processingError || undefined } : undefined }) : undefined)
+          .then(() => durableSamJobId && !annotationFailed ? acknowledgeSam31Job(durableSamJobId).catch(() => {}) : undefined)
           .then(() => { setVideoProcessing(false); if (savedMode === "sam31") void enableCameraRef.current(); if (captureSource === "sync") onSaved("pose", !annotationFailed); })
           .catch(() => { setVideoProcessing(false); if (savedMode === "sam31") void enableCameraRef.current(); if (captureSource === "sync") onSaved("pose", false); });
         captureRef.current = null;

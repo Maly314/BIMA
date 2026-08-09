@@ -112,6 +112,7 @@ function startSam31Server() {
     env: {
       ...process.env,
       BIMA_SAM31_PORT: String(SAM31_PORT),
+      BIMA_APP_ORIGIN: APP_URL,
       BIMA_SAM31_CHUNK_FRAMES: '4',
       BIMA_SAM31_GPU_MEMORY_FRACTION: '0.75',
       BIMA_SAM31_WEIGHT_DTYPE: 'backbones-bfloat16',
@@ -285,7 +286,7 @@ function wireDevices(ses) {
     const origin = requestingOrigin || wc?.getURL();
     return isAllowedPermission(permission, origin, APP_URL);
   });
-  ses.setDevicePermissionHandler((details) => details.deviceType === 'serial');
+  ses.setDevicePermissionHandler((details) => details.deviceType === 'serial' && isAllowedPermission('serial', details.origin, APP_URL));
   // Windows also exposes legacy COM ports (the motherboard's COM1 shows up as
   // an ACPI device with no USB vendor id). Select the Teensy USB Serial
   // identity explicitly instead of taking whichever port happens to be first.

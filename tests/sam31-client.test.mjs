@@ -8,10 +8,13 @@ const json = (body, init = {}) => new Response(JSON.stringify(body), {
   ...init,
 });
 
-const mp4 = () => new Response(new Uint8Array([
+const mp4Bytes = new Uint8Array([
   0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d,
   0, 0, 0, 0, 0x69, 0x73, 0x6f, 0x6d, 0x6d, 0x70, 0x34, 0x32,
-]), { status: 200, headers: { "content-type": "video/mp4" } });
+  0, 0, 0, 12, 0x6d, 0x64, 0x61, 0x74, 1, 2, 3, 4,
+  0, 0, 0, 8, 0x6d, 0x6f, 0x6f, 0x76,
+]);
+const mp4 = () => new Response(mp4Bytes, { status: 200, headers: { "content-type": "video/mp4" } });
 
 test("SAM client completes the versioned upload, progress, metadata, and video lifecycle", async () => {
   const calls = [];
@@ -54,7 +57,7 @@ test("SAM client completes the versioned upload, progress, metadata, and video l
   assert.equal(result.frames.length, 1);
   assert.equal(result.processingMs, 42);
   assert.equal(result.annotatedBlob.type, "video/mp4");
-  assert.equal(result.annotatedBlob.size, 24);
+  assert.equal(result.annotatedBlob.size, mp4Bytes.length);
 });
 
 test("SAM client resumes a durable job without loading or uploading again", async () => {
@@ -80,7 +83,7 @@ test("SAM client resumes a durable job without loading or uploading again", asyn
     "http://sam.test/result/durable-job/video",
   ]);
   assert.equal(result.jobId, "durable-job");
-  assert.equal(result.annotatedBlob.size, 24);
+  assert.equal(result.annotatedBlob.size, mp4Bytes.length);
 });
 
 test("SAM client rejects a mislabeled or truncated annotated video", async () => {
@@ -91,6 +94,22 @@ test("SAM client rejects a mislabeled or truncated annotated video", async () =>
   ];
   await assert.rejects(
     resumeSam31Video("bad-video", {
+      signal: new AbortController().signal,
+      sleep: async () => {},
+      fetcher: async () => responses.shift(),
+    }),
+    /invalid annotated MP4.*raw recording was preserved/,
+  );
+});
+
+test("SAM client rejects an ftyp-only video that cannot contain annotations", async () => {
+  const responses = [
+    json({ status: "complete", progress: 100 }),
+    json({ frames: [], processingMs: 10 }),
+    new Response(mp4Bytes.slice(0, 24), { status: 200, headers: { "content-type": "video/mp4" } }),
+  ];
+  await assert.rejects(
+    resumeSam31Video("header-only-video", {
       signal: new AbortController().signal,
       sleep: async () => {},
       fetcher: async () => responses.shift(),

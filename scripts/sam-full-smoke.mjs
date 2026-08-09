@@ -45,4 +45,6 @@ if (video.length < 12 || video.subarray(4, 8).toString("ascii") !== "ftyp") {
   throw new Error("result was not a valid MP4");
 }
 await Promise.all([writeFile(outputPath, video), writeFile(metadataPath, metadata)]);
+const ackResponse = await fetch(`${serviceUrl}/result/${started.jobId}/ack`, { method: "POST" });
+if (!ackResponse.ok) throw new Error(`result cleanup acknowledgement failed: ${ackResponse.status}`);
 console.log(`complete videoBytes=${video.length} metadataBytes=${metadata.length}`);

@@ -1,5 +1,5 @@
 import { addCaptureAsset, addRecording, type Recording } from "./recordings.ts";
-import { resumeSam31Video, type Sam31NativeFrame } from "./sam31-client.ts";
+import { acknowledgeSam31Job, resumeSam31Video, type Sam31NativeFrame } from "./sam31-client.ts";
 
 type Segment = Record<string, unknown>;
 type ResumeResult = {
@@ -13,6 +13,7 @@ type RecoveryDependencies = {
   resume?: (jobId: string, signal: AbortSignal) => Promise<ResumeResult>;
   saveRecording?: typeof addRecording;
   saveAsset?: typeof addCaptureAsset;
+  acknowledge?: (jobId: string) => Promise<void>;
 };
 
 const activeRecoveries = new Map<string, Promise<Recording>>();
@@ -104,6 +105,11 @@ export async function recoverSam31Recording(
         // manifest-link failure must never overwrite them with the old raw
         // processing record; the session can be repaired independently.
       }
+    }
+    try {
+      await (dependencies.acknowledge ?? acknowledgeSam31Job)(recording.samJobId!);
+    } catch {
+      // TTL cleanup is the fallback if the local acknowledgement is lost.
     }
     return completed;
   })().finally(() => activeRecoveries.delete(recording.samJobId!));
