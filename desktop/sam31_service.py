@@ -118,6 +118,25 @@ def _video_encoder_command(ffmpeg: str, width: int, height: int, fps: float, out
     return command
 
 
+def _decoded_frame_count(video_path: Path) -> int:
+    ffprobe = shutil.which("ffprobe")
+    if not ffprobe:
+        raise RuntimeError("FFprobe is required to count recorded video frames.")
+    probe = subprocess.run(
+        [ffprobe, "-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries", "stream=nb_read_frames", "-of", "json", str(video_path)],
+        capture_output=True,
+        timeout=120,
+        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+    )
+    if probe.returncode != 0:
+        raise RuntimeError(f"Recorded video frame-count probe failed: {probe.stderr.decode(errors='replace').strip()}")
+    streams = json.loads(probe.stdout or b"{}").get("streams", [])
+    frame_count = int((streams[0] if streams else {}).get("nb_read_frames", 0))
+    if frame_count < 1:
+        raise RuntimeError(f"Recorded video contained no countable frames: {streams!r}")
+    return frame_count
+
+
 def _validate_encoded_video(video_path: Path, expected_frames: int) -> None:
     ffprobe = shutil.which("ffprobe")
     ffmpeg = shutil.which("ffmpeg")
@@ -645,7 +664,11 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
             fps = float(capture.get(cv2.CAP_PROP_FPS))
             if not (1 <= fps <= 120):
                 fps = 30.0
-            source_frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
+            # MediaRecorder WebM files can expose a bogus negative
+            # CAP_PROP_FRAME_COUNT on Windows. Count decoded frames with
+            # FFprobe so chunk boundaries and final integrity checks share one
+            # authoritative value.
+            source_frame_count = _decoded_frame_count(source_path)
             capture.release()
             job.update({"phase": "preparing-video", "progress": 2, "frameCount": source_frame_count, "sourceFps": round(fps, 3)})
 
