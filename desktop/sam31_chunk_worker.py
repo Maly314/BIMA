@@ -21,6 +21,7 @@ GPU_MEMORY_FRACTION = min(0.95, max(0.50, float(os.environ.get("BIMA_SAM31_GPU_M
 MODEL_WEIGHT_DTYPE = os.environ.get("BIMA_SAM31_WEIGHT_DTYPE", "backbones-bfloat16").lower()
 
 from sam31_service import OUTPUT_PROB_THRESH, _load_model, _native_instances
+from sam31_worker_retry import retry_transient_video_open
 
 
 def main() -> int:
@@ -46,10 +47,12 @@ def main() -> int:
     predictor = _load_model()
     session_id = str(uuid.uuid4())
     with torch.inference_mode(), torch.autocast(device_type="cuda", dtype=torch.bfloat16):
-        state = predictor.model.init_state(
-            resource_path=str(source),
-            offload_video_to_cpu=True,
-            async_loading_frames=False,
+        state = retry_transient_video_open(
+            lambda: predictor.model.init_state(
+                resource_path=str(source),
+                offload_video_to_cpu=True,
+                async_loading_frames=False,
+            )
         )
         now = time.time()
         predictor._all_inference_states[session_id] = {
