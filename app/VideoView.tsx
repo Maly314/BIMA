@@ -741,13 +741,14 @@ export default function VideoView({ session, captureRun, onReadyChange, onSaved,
   const startSam31Ref = useRef(startSam31);
   startSam31Ref.current = startSam31;
 
-  const processSamRecordedVideo = async (blob: Blob, run: CaptureRun): Promise<{ frames: Sam31TrackingFrame[]; annotatedBlob: Blob; processingMs: number; samKeyframes: number }> => {
+  const processSamRecordedVideo = async (blob: Blob, run: CaptureRun, onJobStarted?: (jobId: string) => void | Promise<void>): Promise<{ frames: Sam31TrackingFrame[]; annotatedBlob: Blob; processingMs: number; samKeyframes: number }> => {
     const controller = new AbortController();
     samRequestAbortRef.current = controller;
     setStatus("SAM 3.1 full propagation · uploading video");
     try {
       const result = await processSam31Video<Sam31Instance>(blob, {
         signal: controller.signal,
+        onJobStarted,
         onProgress: (job) => {
           setStatus(`SAM 3.1 full propagation · ${job.phase ?? "processing"} · ${Math.round(job.progress ?? 0)}%${job.processedFrames ? ` · ${job.processedFrames}/${job.frameCount ?? "?"} frames` : ""}`);
         },
@@ -962,6 +963,25 @@ export default function VideoView({ session, captureRun, onReadyChange, onSaved,
         const durationMs = captureDurationMs(run);
         const stoppedAt = run.stoppedAtEpochMs ?? Date.now();
         const blob=new Blob(chunksRef.current,{type:mimeType});
+        if (savedMode === "sam31") {
+          // Recording has ended, so release camera textures before the full
+          // SAM model claims VRAM. Keeping this stream alive was unnecessary
+          // and contributed directly to Electron's renderer being evicted.
+          stream.getTracks().forEach((track)=>track.stop());
+          videoTrackRef.current = null;
+          if (videoRef.current) videoRef.current.srcObject = null;
+        }
+        const captureSource = captureSourceRef.current;
+        const baseName=`patient-${session.patientNumber}-${session.suspected?"susp":"non"}-wk${ageWeeks(session)}-${run.id.slice(0,8)}`;
+        const recordingId = newId();
+        const rawSamFilename = `${baseName}-sam31-raw.webm`;
+        const provisionalSamRecording = savedMode === "sam31" ? {
+          id:recordingId, patientNumber:session.patientNumber, suspected:session.suspected, ageYears:session.ageYears, ageMonths:session.ageMonths, ageDays:session.ageDays,
+          ...clinicalAgeMetadata(session), studyDate:session.studyDate, weightKg:session.weightKg, studyId:run.studyId, note:run.note, kind:"pose" as const,
+          date:stoppedAt, blob, filename:rawSamFilename, size:blob.size, annotationStatus:"processing" as const,
+          thumbnail:poseCanvasRef.current?.toDataURL("image/png"), captureSessionId:captureSource === "sync" ? run.id : undefined,
+          sync:{ schemaVersion:CAPTURE_SCHEMA_VERSION, clock:"performance-time-origin" as const, startedAtEpochMs:run.startedAtEpochMs, streamStartOffsetMs:recorderStartedOffsetRef.current, sampleCount:0 },
+        } : null;
         let savedBlob = blob;
         let rawBlob: Blob | undefined;
         let samProcessingMs = 0;
@@ -971,7 +991,13 @@ export default function VideoView({ session, captureRun, onReadyChange, onSaved,
           setVideoProcessing(true);
           setStatus("SAM 3.1 post-processing · starting");
           try {
-            const processed = await processSamRecordedVideo(blob, run);
+            if (!provisionalSamRecording) throw new Error("Raw SAM recording metadata was not created");
+            // Commit the untouched recording before inference. A renderer or
+            // GPU-process loss can no longer erase the captured source video.
+            await addRecording(provisionalSamRecording);
+            const processed = await processSamRecordedVideo(blob, run, async (samJobId) => {
+              await addRecording({ ...provisionalSamRecording, samJobId, samPipelineVersion:"sam31-native-v10" });
+            });
             frames = processed.frames;
             savedBlob = processed.annotatedBlob;
             rawBlob = blob;
@@ -1003,21 +1029,19 @@ export default function VideoView({ session, captureRun, onReadyChange, onSaved,
             : { observedFrameRateHz: durationMs ? Number((frames.length * 1000 / durationMs).toFixed(3)) : 0, coordinateSpace: "normalized-camera", output: "native-hand-mask-rle-bbox-centroid", maskResolution: [640, 360], rawCameraStored: true, visualization: "native-mask-overlay", inferenceBackend: "Meta SAM 3.1 native propagate_in_video", prompt: "human hand on frame 0", nativeTrackedFrames: samKeyframes, processingMs: samProcessingMs, postProcessed: true, processingError: processingError || undefined, integrity },
           frames,
         })], { type: "application/json" });
-        const baseName=`patient-${session.patientNumber}-${session.suspected?"susp":"non"}-wk${ageWeeks(session)}-${run.id.slice(0,8)}`;
         const filename = `${baseName}-${savedMode === "sam31" && !processingError ? "sam31-tracked.mp4" : savedMode === "sam31" ? "sam31-raw.webm" : "pose.webm"}`;
         const rawFilename = savedMode === "sam31" && rawBlob ? `${baseName}-sam31-raw.webm` : undefined;
         const sidecarFilename = `${baseName}-${savedMode === "sam31" ? "segments" : "landmarks"}.json`;
-        const recordingId = newId();
         const annotationFailed = savedMode === "sam31" && Boolean(processingError);
         setDownloadBaseName(baseName); setDownloadFilename(filename); setDownloadUrl(annotationFailed ? "" : URL.createObjectURL(savedBlob)); setRawDownloadUrl(annotationFailed ? URL.createObjectURL(blob) : rawBlob ? URL.createObjectURL(rawBlob) : ""); setTrackingDownloadUrl(URL.createObjectURL(sidecar));
         stream.getTracks().forEach((track)=>track.stop());
         videoTrackRef.current = null;
-        addRecording({ id:recordingId, patientNumber:session.patientNumber, suspected:session.suspected, ageYears:session.ageYears, ageMonths:session.ageMonths, ageDays:session.ageDays, ...clinicalAgeMetadata(session), studyDate:session.studyDate, weightKg:session.weightKg, studyId:run.studyId, note:run.note, kind:"pose", date:stoppedAt, blob:savedBlob, filename, size:savedBlob.size + (rawBlob?.size ?? 0), rawBlob, rawFilename, annotationStatus:savedMode === "sam31" ? (processingError ? "failed" : "complete") : undefined, processingError:processingError || undefined, thumbnail:poseCanvasRef.current?.toDataURL("image/png"), sidecarBlob:sidecar, sidecarFilename, captureSessionId:captureSourceRef.current === "sync" ? run.id : undefined, sync:{ schemaVersion:CAPTURE_SCHEMA_VERSION, clock:"performance-time-origin", startedAtEpochMs:run.startedAtEpochMs, streamStartOffsetMs:recorderStartedOffsetRef.current, sampleCount:frames.length } })
-          .then(() => captureSourceRef.current === "sync" ? addCaptureAsset(run.id, { recordingId, kind:"pose", filename, sidecarFilename, sampleCount:frames.length, streamStartOffsetMs:recorderStartedOffsetRef.current, size:savedBlob.size + (rawBlob?.size ?? 0) + sidecar.size }) : undefined)
-          .then(() => { setVideoProcessing(false); if (captureSourceRef.current === "sync") onSaved("pose", true); })
-          .catch(() => { setVideoProcessing(false); if (captureSourceRef.current === "sync") onSaved("pose", false); });
+        addRecording({ id:recordingId, patientNumber:session.patientNumber, suspected:session.suspected, ageYears:session.ageYears, ageMonths:session.ageMonths, ageDays:session.ageDays, ...clinicalAgeMetadata(session), studyDate:session.studyDate, weightKg:session.weightKg, studyId:run.studyId, note:run.note, kind:"pose", date:stoppedAt, blob:savedBlob, filename, size:savedBlob.size + (rawBlob?.size ?? 0), rawBlob, rawFilename, annotationStatus:savedMode === "sam31" ? (processingError ? "failed" : "complete") : undefined, processingError:processingError || undefined, thumbnail:poseCanvasRef.current?.toDataURL("image/png"), sidecarBlob:sidecar, sidecarFilename, captureSessionId:captureSource === "sync" ? run.id : undefined, sync:{ schemaVersion:CAPTURE_SCHEMA_VERSION, clock:"performance-time-origin", startedAtEpochMs:run.startedAtEpochMs, streamStartOffsetMs:recorderStartedOffsetRef.current, sampleCount:frames.length } })
+          .then(() => captureSource === "sync" ? addCaptureAsset(run.id, { recordingId, kind:"pose", filename, sidecarFilename, sampleCount:frames.length, streamStartOffsetMs:recorderStartedOffsetRef.current, size:savedBlob.size + (rawBlob?.size ?? 0) + sidecar.size }) : undefined)
+          .then(() => { setVideoProcessing(false); if (captureSource === "sync") onSaved("pose", true); })
+          .catch(() => { setVideoProcessing(false); if (captureSource === "sync") onSaved("pose", false); });
         captureRef.current = null;
-        if (captureSourceRef.current === "video") setVideoOnlyRun(null);
+        if (captureSource === "video") setVideoOnlyRun(null);
       };
       recordingRef.current=true;
       recorder.start(1000);

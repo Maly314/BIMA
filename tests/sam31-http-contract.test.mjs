@@ -41,9 +41,15 @@ test("SAM service exposes its runtime and matching pipeline version", async (t) 
   const { response } = await startService(t);
   const body = await response.json();
   assert.equal(body.service, "ready");
-  assert.equal(body.pipelineVersion, "sam31-native-v7");
+  assert.equal(body.pipelineVersion, "sam31-native-v10");
   assert.equal(body.runtime, "official facebookresearch/sam3");
   assert.match(body.model, /^(ready|not-loaded)$/);
+  assert.deepEqual(body.resourcePolicy, {
+    chunkFrames: 4,
+    gpuMemoryFraction: 0.86,
+    modelWeightDtype: "language-bfloat16",
+    cudaModuleLoading: "LAZY",
+  });
 });
 
 test("full-video endpoint rejects an empty recording without creating a job", async (t) => {

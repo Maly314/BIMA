@@ -6,6 +6,7 @@ import { deleteRecording, getCalibration, getLastPatient, listRecordings, setCal
 import { ageWeeks, createPatientSession, detailedAgeLabel, type Session } from "./session-domain";
 import { CALIBRATION_CAPTURE_MS, CALIBRATION_SETTLE_MS, INVALID_RE, buildCalibration, calibrationIsUsable, parseImuLine, type ImuSample } from "./sensor-calibration";
 import BrandLockup from "./BrandLockup";
+import { recoverSam31Recording } from "./sam31-recovery";
 
 function formatDate(ms: number) {
   return new Date(ms).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
@@ -133,7 +134,17 @@ export default function Landing({ onStart }: { onStart: (session: Session) => vo
     setNextPatient(Math.max(getLastPatient(), maxRec) + 1);
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void (async () => {
+      await refresh();
+      const pending = (await listRecordings()).filter((recording) => recording.annotationStatus === "processing" && recording.samJobId);
+      if (!pending.length) return;
+      await Promise.allSettled(pending.map((recording) => recoverSam31Recording(recording, controller.signal)));
+      if (!controller.signal.aborted) await refresh();
+    })();
+    return () => controller.abort();
+  }, [refresh]);
 
   const confirmTarget = recordings.find((r) => r.id === confirmId) || null;
   const doDelete = async () => { if (!confirmId) return; await deleteRecording(confirmId); setConfirmId(null); refresh(); };

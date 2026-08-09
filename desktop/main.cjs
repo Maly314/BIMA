@@ -20,10 +20,11 @@ const { spawn, spawnSync } = require('node:child_process');
 const { app, BrowserWindow, session, shell } = require('electron');
 const { applyCaptureRuntimeSwitches, parseListeningPids } = require('./capture-runtime.cjs');
 const { isAllowedPermission, selectSerialPort } = require('./device-policy.cjs');
+const { wireRendererRecovery } = require('./renderer-recovery.cjs');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 4820;
-const SAM31_PORT = 4831;
+const PORT = Number(process.env.BIMA_PORT || 4820);
+const SAM31_PORT = Number(process.env.BIMA_SAM31_PORT || 4831);
 const APP_URL = `http://127.0.0.1:${PORT}`;
 const BG = '#e4ebee';                       // matches the gradient scene
 const ICON_PATH = path.join(ROOT, 'public', 'bima-desktop.ico');
@@ -33,13 +34,14 @@ const BRAND_LOGO_DATA = fs.existsSync(path.join(ROOT, 'public', 'bima-logo.png')
 
 app.setName('BIMA');
 if (process.platform === 'win32') app.setAppUserModelId('org.bima.capture');
+if (process.env.BIMA_USER_DATA_DIR) app.setPath('userData', process.env.BIMA_USER_DATA_DIR);
 
 /* The capture window must not inherit Chromium's software-only fallback.
    This machine has a discrete RTX GPU, and MediaPipe's worker delegate needs
    WebGL plus accelerated video decode to keep hand inference realtime. The
    flags are set before app ready so the GPU process sees them from launch. */
 applyCaptureRuntimeSwitches(app.commandLine);
-const STARTUP_DEBUG = path.join(__dirname, 'startup-debug.log');
+const STARTUP_DEBUG = process.env.BIMA_DEBUG_LOG || path.join(__dirname, 'startup-debug.log');
 fs.writeFileSync(STARTUP_DEBUG, `loaded ${new Date().toISOString()}\n`);
 process.on('uncaughtException', (error) => fs.appendFileSync(STARTUP_DEBUG, `uncaught ${error.stack || error}\n`));
 process.on('unhandledRejection', (error) => fs.appendFileSync(STARTUP_DEBUG, `rejection ${error?.stack || error}\n`));
@@ -93,6 +95,10 @@ function killServer() {
 }
 
 function startSam31Server() {
+  if (process.env.BIMA_DISABLE_SAM === '1') {
+    fs.appendFileSync(STARTUP_DEBUG, 'sam31 service disabled for recovery probe\n');
+    return;
+  }
   killPortHolder(SAM31_PORT);
   const python = path.join(ROOT, '.sam31-venv', 'Scripts', 'python.exe');
   const service = path.join(__dirname, 'sam31_service.py');
@@ -103,7 +109,15 @@ function startSam31Server() {
   sam31Server = spawn(python, [service], {
     cwd: ROOT,
     windowsHide: true,
-    env: { ...process.env, BIMA_SAM31_PORT: String(SAM31_PORT), PYTORCH_CUDA_ALLOC_CONF: 'expandable_segments:True' },
+    env: {
+      ...process.env,
+      BIMA_SAM31_PORT: String(SAM31_PORT),
+      BIMA_SAM31_CHUNK_FRAMES: '4',
+      BIMA_SAM31_GPU_MEMORY_FRACTION: '0.86',
+      BIMA_SAM31_WEIGHT_DTYPE: 'language-bfloat16',
+      CUDA_MODULE_LOADING: 'LAZY',
+      PYTORCH_CUDA_ALLOC_CONF: 'expandable_segments:True',
+    },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   const logSam = (chunk) => fs.appendFileSync(STARTUP_DEBUG, String(chunk));
@@ -146,6 +160,8 @@ const splash = (message) => 'data:text/html;charset=utf-8,' + encodeURIComponent
 /* ---- window ------------------------------------------------------------- */
 
 function createWindow() {
+  let crashProbeTriggered = false;
+  let stabilityProbeStarted = false;
   win = new BrowserWindow({
     width: 1560,
     height: 1020,
@@ -165,8 +181,20 @@ function createWindow() {
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false },
   });
 
-  win.once('ready-to-show', () => { win.maximize(); win.show(); });
+  win.once('ready-to-show', () => {
+    if (process.env.BIMA_HEADLESS_PROBE !== '1') { win.maximize(); win.show(); }
+  });
   win.on('closed', () => { win = null; });
+  wireRendererRecovery(win, {
+    log: (message) => fs.appendFileSync(STARTUP_DEBUG, `${new Date().toISOString()} ${message}\n`),
+    recover: async ({ reason, attempt }) => {
+      if (!win || win.isDestroyed()) return;
+      fs.appendFileSync(STARTUP_DEBUG, `${new Date().toISOString()} renderer-recovering reason=${reason} attempt=${attempt}\n`);
+      await win.loadURL(splash('Recovering the capture windowâ€¦'));
+      await new Promise((resolve) => setTimeout(resolve, 750));
+      if (win && !win.isDestroyed()) await win.loadURL(APP_URL);
+    },
+  });
   // Preserve the lightweight, once-per-second tracking telemetry outside the
   // renderer so a real run can be audited after the window closes. This does
   // not log frames, landmarks, or camera pixels.
@@ -208,6 +236,38 @@ function createWindow() {
                     box-shadow: inset 0 1px 0 rgba(255,255,255,.75) !important; }
       .window-bar { padding-right: 170px !important; }
     `);
+    if (process.env.BIMA_CRASH_PROBE === '1') {
+      if (!crashProbeTriggered) {
+        crashProbeTriggered = true;
+        fs.appendFileSync(STARTUP_DEBUG, 'crash-probe-triggered\n');
+        setTimeout(() => {
+          if (win && !win.isDestroyed()) win.webContents.forcefullyCrashRenderer();
+        }, 250);
+      } else {
+        fs.appendFileSync(STARTUP_DEBUG, 'crash-probe-recovered\n');
+        setTimeout(() => app.quit(), 250);
+      }
+    }
+    const stabilitySeconds = Number(process.env.BIMA_STABILITY_PROBE_SECONDS || 0);
+    if (stabilitySeconds > 0 && !stabilityProbeStarted) {
+      stabilityProbeStarted = true;
+      let ticks = 0;
+      let errors = 0;
+      const interval = setInterval(async () => {
+        if (!win || win.isDestroyed()) return;
+        try {
+          await win.webContents.executeJavaScript('document.body && document.body.getBoundingClientRect().width > 0');
+          ticks += 1;
+        } catch {
+          errors += 1;
+        }
+      }, 1000);
+      setTimeout(() => {
+        clearInterval(interval);
+        fs.appendFileSync(STARTUP_DEBUG, `stability-probe-complete ticks=${ticks} errors=${errors}\n`);
+        app.quit();
+      }, stabilitySeconds * 1000);
+    }
   });
 }
 
@@ -337,6 +397,10 @@ app.whenReady().then(async () => {
       } catch (e) { process.stderr.write('PROBE-ERR ' + e.message + '\n'); }
     });
   }
+});
+
+app.on('child-process-gone', (_event, details) => {
+  fs.appendFileSync(STARTUP_DEBUG, `${new Date().toISOString()} child-process-gone ${JSON.stringify(details)}\n`);
 });
 
 app.on('window-all-closed', () => { killServer(); app.quit(); });

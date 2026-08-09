@@ -25,8 +25,10 @@ export type Recording = {
   size: number;
   rawBlob?: Blob;
   rawFilename?: string;
-  annotationStatus?: "complete" | "failed";
+  annotationStatus?: "processing" | "complete" | "failed";
   processingError?: string;
+  samJobId?: string;
+  samPipelineVersion?: string;
   thumbnail?: string;
   sidecarBlob?: Blob;
   sidecarFilename?: string;

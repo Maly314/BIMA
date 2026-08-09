@@ -1,4 +1,4 @@
-export const SAM_PIPELINE_VERSION = "sam31-native-v7";
+export const SAM_PIPELINE_VERSION = "sam31-native-v10";
 export const SAM_SERVICE_URL = "http://127.0.0.1:4831";
 
 export type Sam31JobProgress = {
@@ -19,6 +19,7 @@ export type Sam31NativeFrame<TSegment> = {
 
 type ProcessOptions = {
   signal: AbortSignal;
+  onJobStarted?: (jobId: string) => void | Promise<void>;
   onProgress?: (progress: Sam31JobProgress) => void;
   onPhase?: (phase: "retrieving-metadata" | "retrieving-video") => void;
   fetcher?: typeof fetch;
@@ -26,13 +27,26 @@ type ProcessOptions = {
   serviceUrl?: string;
 };
 
+type ResumeOptions = Omit<ProcessOptions, "onJobStarted">;
+
 async function jsonOrEmpty<T>(response: Response): Promise<T> {
   return response.json().catch(() => ({} as T));
 }
 
+async function validatedMp4(response: Response) {
+  if (!response.ok) throw new Error("The annotated SAM video could not be retrieved");
+  const blob = await response.blob();
+  const header = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
+  const hasFtyp = header.length >= 8
+    && header[4] === 0x66 && header[5] === 0x74 && header[6] === 0x79 && header[7] === 0x70;
+  if (!response.headers.get("content-type")?.toLowerCase().startsWith("video/mp4") || !hasFtyp) {
+    throw new Error("The SAM service returned an invalid annotated MP4; the raw recording was preserved");
+  }
+  return blob;
+}
+
 export async function processSam31Video<TSegment>(blob: Blob, options: ProcessOptions) {
   const fetcher = options.fetcher ?? fetch;
-  const sleep = options.sleep ?? ((milliseconds) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
   const serviceUrl = options.serviceUrl ?? SAM_SERVICE_URL;
 
   const loadResponse = await fetcher(`${serviceUrl}/load`, { method: "POST", signal: options.signal });
@@ -52,9 +66,18 @@ export async function processSam31Video<TSegment>(blob: Blob, options: ProcessOp
   if (!response.ok || !started.jobId) throw new Error(started.error || "SAM 3.1 native video propagation could not start");
   if (started.pipelineVersion !== SAM_PIPELINE_VERSION) throw new Error("BIMA changed versions while processing. Restart BIMA and record again.");
 
+  await options.onJobStarted?.(started.jobId);
+  return resumeSam31Video<TSegment>(started.jobId, options);
+}
+
+export async function resumeSam31Video<TSegment>(jobId: string, options: ResumeOptions) {
+  const fetcher = options.fetcher ?? fetch;
+  const sleep = options.sleep ?? ((milliseconds) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
+  const serviceUrl = options.serviceUrl ?? SAM_SERVICE_URL;
+
   while (true) {
     await sleep(1000);
-    const statusResponse = await fetcher(`${serviceUrl}/result/${started.jobId}/status`, { signal: options.signal });
+    const statusResponse = await fetcher(`${serviceUrl}/result/${jobId}/status`, { signal: options.signal });
     const job = await jsonOrEmpty<Sam31JobProgress>(statusResponse);
     if (!statusResponse.ok || job.status === "failed") throw new Error(job.error || "SAM 3.1 native propagation failed");
     options.onProgress?.(job);
@@ -63,7 +86,7 @@ export async function processSam31Video<TSegment>(blob: Blob, options: ProcessOp
   }
 
   options.onPhase?.("retrieving-metadata");
-  const metadataResponse = await fetcher(`${serviceUrl}/result/${started.jobId}/metadata`, { signal: options.signal });
+  const metadataResponse = await fetcher(`${serviceUrl}/result/${jobId}/metadata`, { signal: options.signal });
   const result = await jsonOrEmpty<{
     frames?: Sam31NativeFrame<TSegment>[];
     processingMs?: number;
@@ -72,11 +95,11 @@ export async function processSam31Video<TSegment>(blob: Blob, options: ProcessOp
   if (!metadataResponse.ok) throw new Error(result.error || "SAM 3.1 native mask metadata could not be retrieved");
 
   options.onPhase?.("retrieving-video");
-  const videoResponse = await fetcher(`${serviceUrl}/result/${started.jobId}/video`, { signal: options.signal });
-  if (!videoResponse.ok) throw new Error("The annotated SAM video could not be retrieved");
+  const videoResponse = await fetcher(`${serviceUrl}/result/${jobId}/video`, { signal: options.signal });
   return {
+    jobId,
     frames: result.frames ?? [],
     processingMs: result.processingMs ?? 0,
-    annotatedBlob: await videoResponse.blob(),
+    annotatedBlob: await validatedMp4(videoResponse),
   };
 }

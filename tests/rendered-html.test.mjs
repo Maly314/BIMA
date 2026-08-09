@@ -37,7 +37,7 @@ test("desktop workspace fills the available viewport instead of collapsing to co
 });
 
 test("hand capture includes synchronized hand, sensor, and privacy-preserving recording support", async () => {
-  const [pageSource, landing, sensorView, videoView, recordingTypes, recordingDatabase, worker, sam31Client, cameraConfig] = await Promise.all([
+  const [pageSource, landing, sensorView, videoView, recordingTypes, recordingDatabase, worker, sam31Client, sam31Recovery, cameraConfig] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/Landing.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/SensorView.tsx", import.meta.url), "utf8"),
@@ -46,6 +46,7 @@ test("hand capture includes synchronized hand, sensor, and privacy-preserving re
     readFile(new URL("../app/recording-database.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/pose-worker.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/sam31-client.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/sam31-recovery.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/camera-config.ts", import.meta.url), "utf8"),
   ]);
   const page = `${pageSource}\n${landing}\n${sensorView}\n${videoView}`;
@@ -111,7 +112,7 @@ test("hand capture includes synchronized hand, sensor, and privacy-preserving re
   assert.match(sam31Service, /version="sam3\.1"/);
   assert.match(sam31Service, /_process_video/);
   assert.match(sam31Service, /process-video-full/);
-  assert.match(sam31Service, /sam31-native-v7/);
+  assert.match(sam31Service, /sam31-native-v10/);
   assert.match(sam31Service, /FULL_VIDEO_CHUNK_FRAMES/);
   assert.match(sam31Service, /sam31_chunk_worker\.py/);
   assert.match(sam31Service, /expandable_segments:True/);
@@ -119,8 +120,15 @@ test("hand capture includes synchronized hand, sensor, and privacy-preserving re
   assert.match(sam31Service, /propagate_in_video/);
   assert.match(page, /processSam31Video/);
   assert.match(sam31Client, /process-video-full/);
-  assert.match(sam31Client, /sam31-native-v7/);
+  assert.match(sam31Client, /sam31-native-v10/);
   assert.match(sam31Client, /BIMA version mismatch/);
+  assert.match(page, /annotationStatus:"processing"/);
+  assert.match(page, /await addRecording\(provisionalSamRecording\)/);
+  assert.match(page, /if \(savedMode === "sam31"\)[\s\S]*?videoRef\.current\.srcObject = null/);
+  assert.match(page, /samJobId, samPipelineVersion:"sam31-native-v10"/);
+  assert.match(landing, /recoverSam31Recording/);
+  assert.match(sam31Recovery, /recoveredAfterRendererRestart: true/);
+  assert.match(sam31Recovery, /annotationStatus: "failed"/);
   assert.match(cameraConfig, /width: \{ ideal: CAMERA_WIDTH \}/);
   assert.doesNotMatch(cameraConfig, /width:\{exact:CAMERA_WIDTH\}/);
   assert.match(page, /annotationFailed \? ""/);

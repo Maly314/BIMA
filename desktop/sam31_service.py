@@ -13,6 +13,7 @@ import os
 # Must be set before PyTorch is imported by the SAM package. Long-running video
 # jobs otherwise lose usable VRAM to reserved block fragmentation on Windows.
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+os.environ.setdefault("CUDA_MODULE_LOADING", "LAZY")
 import shutil
 import subprocess
 import sys
@@ -27,7 +28,7 @@ from typing import Any
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("BIMA_SAM31_PORT", "4831"))
-PIPELINE_VERSION = "sam31-native-v7"
+PIPELINE_VERSION = "sam31-native-v10"
 ROOT = Path(__file__).resolve().parents[1]
 CHECKPOINT_CANDIDATES = [
     Path(os.environ["BIMA_SAM31_CHECKPOINT"]) if os.environ.get("BIMA_SAM31_CHECKPOINT") else None,
@@ -61,7 +62,9 @@ FULL_MASK_HEIGHT = 360
 # The multiplex checkpoint peaks near the full 8 GB capacity even at 640x360.
 # Eight 30-fps frames is the largest repeatedly verified state on this machine;
 # more frames can make CUDA terminate the service before an output is finalized.
-FULL_VIDEO_CHUNK_FRAMES = max(1, int(os.environ.get("BIMA_SAM31_CHUNK_FRAMES", "8")))
+FULL_VIDEO_CHUNK_FRAMES = max(1, int(os.environ.get("BIMA_SAM31_CHUNK_FRAMES", "4")))
+GPU_MEMORY_FRACTION = min(0.95, max(0.50, float(os.environ.get("BIMA_SAM31_GPU_MEMORY_FRACTION", "0.86"))))
+MODEL_WEIGHT_DTYPE = os.environ.get("BIMA_SAM31_WEIGHT_DTYPE", "language-bfloat16").lower()
 
 
 def _checkpoint_path() -> Path:
@@ -141,6 +144,12 @@ def _load_model() -> Any:
                 use_rope_real=False,
                 async_loading_frames=False,
             )
+            if MODEL_WEIGHT_DTYPE == "language-bfloat16":
+                # The official predictor already computes under BF16 autocast.
+                # Its language backbone is 1.35 GB in FP32 and only produces
+                # the text prompt embedding. Store that backbone in BF16 while
+                # leaving the precision-sensitive visual decoder in FP32.
+                _model.model.detector.backbone.language_backbone.to(dtype=torch.bfloat16)
             _model_error = ""
             return _model
         except Exception as exc:
@@ -641,7 +650,12 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
                     [sys.executable, str(Path(__file__).with_name("sam31_chunk_worker.py")), str(chunk_path), str(chunk_result_path)],
                     capture_output=True,
                     timeout=600,
-                    env={**os.environ, "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"},
+                    env={
+                        **os.environ,
+                        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
+                        "CUDA_MODULE_LOADING": "LAZY",
+                        "BIMA_SAM31_GPU_MEMORY_FRACTION": str(GPU_MEMORY_FRACTION),
+                    },
                     creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
                 )
                 if worker.returncode != 0 or not chunk_result_path.is_file():
@@ -1013,6 +1027,12 @@ class Handler(BaseHTTPRequestHandler):
                 "model": "ready" if _model is not None else "not-loaded",
                 "error": _model_error or None,
                 "runtime": "official facebookresearch/sam3",
+                "resourcePolicy": {
+                    "chunkFrames": FULL_VIDEO_CHUNK_FRAMES,
+                    "gpuMemoryFraction": GPU_MEMORY_FRACTION,
+                    "modelWeightDtype": MODEL_WEIGHT_DTYPE,
+                    "cudaModuleLoading": os.environ["CUDA_MODULE_LOADING"],
+                },
                 "checkpoint": str(_checkpoint_path()) if any(path and path.is_file() for path in CHECKPOINT_CANDIDATES) else None,
             }
         )
