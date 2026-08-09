@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
@@ -27,5 +27,26 @@ test("RLE decoding owns its NumPy dependency and renders a binary mask", () => {
     encoding: "utf8",
     windowsHide: true,
   });
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test("failed cleanup is reported truthfully instead of claiming patient data was deleted", () => {
+  const scratch = mkdtempSync(path.join(os.tmpdir(), "bima-sam-cleanup-status-"));
+  const result = spawnSync(python, ["-c", `
+import pathlib, sam31_service
+job = {}
+def fail_cleanup(_directory):
+    raise RuntimeError("file remains locked")
+sam31_service._remove_tree_with_retries = fail_cleanup
+sam31_service._publish_failed_job(job, pathlib.Path(r'''${scratch}'''), "worker failed")
+assert job["status"] == "failed"
+assert job["cleanupComplete"] is False
+assert "file remains locked" in job["error"]
+`], {
+    cwd: path.join(root, "desktop"),
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  rmSync(scratch, { recursive: true, force: true });
   assert.equal(result.status, 0, result.stderr);
 });

@@ -92,6 +92,21 @@ def _remove_tree_with_retries(directory: Path, attempts: int = 20) -> None:
     raise RuntimeError(f"Could not remove SAM temporary data at {directory}")
 
 
+def _publish_failed_job(job: dict[str, Any], job_dir: Path, failure_message: str) -> None:
+    cleanup_complete = True
+    try:
+        _remove_tree_with_retries(job_dir)
+    except Exception as cleanup_error:
+        cleanup_complete = False
+        failure_message = f"{failure_message}; temporary-data cleanup failed: {cleanup_error}" if failure_message else str(cleanup_error)
+    job.update({
+        "phase": "failed",
+        "status": "failed",
+        "error": failure_message,
+        "cleanupComplete": cleanup_complete,
+    })
+
+
 def _prune_video_results() -> None:
     now = time.time()
     with _video_results_lock:
@@ -876,12 +891,7 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
                 if pipe and not pipe.closed:
                     pipe.close()
         if job.get("status") != "complete":
-            try:
-                _remove_tree_with_retries(job_dir)
-            except Exception as cleanup_error:
-                failure_message = f"{failure_message}; temporary-data cleanup failed: {cleanup_error}" if failure_message else str(cleanup_error)
-        if failure_message:
-            job.update({"phase": "failed", "status": "failed", "error": failure_message, "cleanupComplete": True})
+            _publish_failed_job(job, job_dir, failure_message or "Native SAM video processing stopped before completion.")
 
 
 def _start_full_video_job(video_bytes: bytes) -> dict[str, Any]:
