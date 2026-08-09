@@ -28,6 +28,7 @@ function wireRendererRecovery(win, {
   schedule = setTimeout,
   cancel = clearTimeout,
   crashDelayMs = 250,
+  retryDelayMs = 1_000,
   unresponsiveDelayMs = 8_000,
   gate = createRendererRecoveryGate(),
 } = {}) {
@@ -40,7 +41,12 @@ function wireRendererRecovery(win, {
     pending = schedule(async () => {
       pending = null;
       if (win.isDestroyed?.()) return;
-      await recover(decision);
+      try {
+        await recover(decision);
+      } catch (error) {
+        log(`renderer-recovery-failed reason=${decision.reason} error=${error?.message || error}`);
+        queue({ reason: decision.reason }, retryDelayMs);
+      }
     }, delayMs);
     return decision;
   };

@@ -39,3 +39,29 @@ test('renderer loss schedules one reload and responsive cancellation prevents a 
   await [...callbacks.values()][0]();
   assert.deepEqual(recovered, ['oom']);
 });
+
+test('a failed renderer reload is logged and retried within the bounded gate', async () => {
+  const win = new EventEmitter();
+  win.webContents = new EventEmitter();
+  win.isDestroyed = () => false;
+  const callbacks = [];
+  const logs = [];
+  let attempts = 0;
+  wireRendererRecovery(win, {
+    recover: async () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error('app server unavailable');
+    },
+    log: (message) => logs.push(message),
+    schedule: (callback) => { callbacks.push(callback); return callbacks.length; },
+    crashDelayMs: 0,
+    retryDelayMs: 0,
+  });
+
+  win.webContents.emit('render-process-gone', {}, { reason: 'oom' });
+  await callbacks.shift()();
+  assert.match(logs.join("\n"), /renderer-recovery-failed.*app server unavailable/);
+  assert.equal(callbacks.length, 1);
+  await callbacks.shift()();
+  assert.equal(attempts, 2);
+});
