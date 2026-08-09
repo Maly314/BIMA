@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { recoverSam31Recording } from "../app/sam31-recovery.ts";
+import { markInterruptedSam31Recordings, recoverSam31Recording } from "../app/sam31-recovery.ts";
 
 const processingRecording = () => ({
   id: "pose-1",
@@ -58,5 +58,36 @@ test("failed recovery keeps the raw recording and records the error", async () =
   assert.equal(failed.annotationStatus, "failed");
   assert.equal(failed.processingError, "isolated worker OOM");
   assert.equal(await failed.blob.text(), "untouched-camera");
+  assert.equal(saved.length, 1);
+});
+
+test("capture-manifest failure never overwrites a completed annotated recovery", async () => {
+  const saved = [];
+  const completed = await recoverSam31Recording(processingRecording(), new AbortController().signal, {
+    resume: async (jobId) => ({
+      jobId,
+      frames: [{ frameIndex: 0, sourceVideoTimeMs: 0, segments: [], source: "sam31-native-propagation" }],
+      processingMs: 25,
+      annotatedBlob: new Blob(["annotated-safe"], { type: "video/mp4" }),
+    }),
+    saveRecording: async (recording) => saved.push(recording),
+    saveAsset: async () => { throw new Error("manifest transaction failed"); },
+  });
+
+  assert.equal(completed.annotationStatus, "complete");
+  assert.equal(await completed.blob.text(), "annotated-safe");
+  assert.equal(await completed.rawBlob.text(), "untouched-camera");
+  assert.equal(saved.length, 1);
+  assert.equal(saved[0].annotationStatus, "complete");
+});
+
+test("startup converts an unrecoverable processing record into raw-only failure", async () => {
+  const saved = [];
+  const interrupted = { ...processingRecording(), samJobId: undefined };
+  const [reconciled] = await markInterruptedSam31Recordings([interrupted], async (recording) => saved.push(recording));
+
+  assert.equal(reconciled.annotationStatus, "failed");
+  assert.match(reconciled.processingError, /raw video was preserved/i);
+  assert.equal(await reconciled.blob.text(), "untouched-camera");
   assert.equal(saved.length, 1);
 });
