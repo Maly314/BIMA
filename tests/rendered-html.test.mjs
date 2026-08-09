@@ -27,6 +27,15 @@ test("server renders the movement capture application", async () => {
   assert.doesNotMatch(html, /Your site is taking shape|codex-preview/i);
 });
 
+test("desktop workspace fills the available viewport instead of collapsing to content height", async () => {
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(css, /\.app-window\s*\{[\s\S]*?min-height:calc\(100vh - 60px\)/);
+  assert.match(css, /\.app-window\s*\{[\s\S]*?display:flex;\s*flex-direction:column/);
+  assert.match(css, /\.landing-body\s*\{\s*flex:1;\s*display:flex;\s*flex-direction:column/);
+  assert.match(css, /\.landing-empty\s*\{\s*flex:1;/);
+});
+
 test("hand capture includes synchronized hand, sensor, and privacy-preserving recording support", async () => {
   const [pageSource, landing, sensorView, videoView, recordingTypes, recordingDatabase, worker, sam31Client, cameraConfig] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
