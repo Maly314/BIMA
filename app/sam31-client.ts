@@ -41,27 +41,34 @@ async function jsonOrEmpty<T>(response: Response): Promise<T> {
 async function validatedMp4(response: Response) {
   if (!response.ok) throw new Error("The annotated SAM video could not be retrieved");
   const blob = await response.blob();
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const boxes = new Set<string>();
   let offset = 0;
-  while (offset + 8 <= bytes.length) {
-    let size = view.getUint32(offset);
-    const type = String.fromCharCode(...bytes.subarray(offset + 4, offset + 8));
+  let valid = true;
+  let boxCount = 0;
+  while (offset + 8 <= blob.size && boxCount < 10_000) {
+    // Inspect only the current top-level box header. Calling blob.arrayBuffer()
+    // here would duplicate the entire annotated recording in renderer memory
+    // immediately after the response had already been buffered as a Blob.
+    const header = new Uint8Array(await blob.slice(offset, Math.min(blob.size, offset + 16)).arrayBuffer());
+    const view = new DataView(header.buffer, header.byteOffset, header.byteLength);
+    let size = view.getUint32(0);
+    const type = String.fromCharCode(...header.subarray(4, 8));
     let headerSize = 8;
-    if (size === 1 && offset + 16 <= bytes.length) {
-      const extended = view.getBigUint64(offset + 8);
-      if (extended > BigInt(Number.MAX_SAFE_INTEGER)) break;
+    if (size === 1) {
+      if (header.length < 16) { valid = false; break; }
+      const extended = view.getBigUint64(8);
+      if (extended > BigInt(Number.MAX_SAFE_INTEGER)) { valid = false; break; }
       size = Number(extended);
       headerSize = 16;
     } else if (size === 0) {
-      size = bytes.length - offset;
+      size = blob.size - offset;
     }
-    if (size < headerSize || offset + size > bytes.length) break;
+    if (size < headerSize || offset + size > blob.size) { valid = false; break; }
     boxes.add(type);
     offset += size;
+    boxCount += 1;
   }
-  const structurallyComplete = boxes.has("ftyp") && boxes.has("moov") && boxes.has("mdat") && offset === bytes.length;
+  const structurallyComplete = valid && boxes.has("ftyp") && boxes.has("moov") && boxes.has("mdat") && offset === blob.size;
   if (!response.headers.get("content-type")?.toLowerCase().startsWith("video/mp4") || !structurallyComplete) {
     throw new Error("The SAM service returned an invalid annotated MP4; the raw recording was preserved");
   }

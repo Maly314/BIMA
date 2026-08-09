@@ -86,6 +86,30 @@ test("SAM client resumes a durable job without loading or uploading again", asyn
   assert.equal(result.annotatedBlob.size, mp4Bytes.length);
 });
 
+test("SAM client validates MP4 structure through bounded slices", async () => {
+  const originalArrayBuffer = Blob.prototype.arrayBuffer;
+  let largestRead = 0;
+  Blob.prototype.arrayBuffer = function arrayBuffer() {
+    largestRead = Math.max(largestRead, this.size);
+    return originalArrayBuffer.call(this);
+  };
+  try {
+    const responses = [
+      json({ status: "complete", progress: 100 }),
+      json({ frames: [], processingMs: 10 }),
+      mp4(),
+    ];
+    await resumeSam31Video("bounded-validation", {
+      signal: new AbortController().signal,
+      sleep: async () => {},
+      fetcher: async () => responses.shift(),
+    });
+    assert.ok(largestRead <= 16, `MP4 validation read ${largestRead} bytes at once`);
+  } finally {
+    Blob.prototype.arrayBuffer = originalArrayBuffer;
+  }
+});
+
 test("SAM client rejects a mislabeled or truncated annotated video", async () => {
   const responses = [
     json({ status: "complete", progress: 100 }),

@@ -129,7 +129,7 @@ test("recording persistence preserves session transitions and asset integrity", 
   );
 });
 
-test("a raw-only SAM fallback keeps a synchronized capture incomplete", async () => {
+test("a raw-only SAM fallback marks a synchronized capture terminal and partial", async () => {
   const session = makeSession("session-sam-failed");
   session.status = "processing";
   await addCaptureSession(session);
@@ -152,7 +152,7 @@ test("a raw-only SAM fallback keeps a synchronized capture incomplete", async ()
   });
 
   const stored = await getCaptureSession(session.id);
-  assert.equal(stored.status, "processing");
+  assert.equal(stored.status, "partial");
   assert.equal(stored.assets.find((asset) => asset.kind === "pose").metadata.annotationStatus, "failed");
 });
 
