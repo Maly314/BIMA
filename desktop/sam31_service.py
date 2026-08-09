@@ -32,8 +32,6 @@ APP_ORIGIN = os.environ.get("BIMA_APP_ORIGIN", "http://127.0.0.1:4820").rstrip("
 PIPELINE_VERSION = "sam31-native-v12"
 ROOT = Path(__file__).resolve().parents[1]
 SERVICE_TEMP_ROOT = Path(os.environ.get("BIMA_SAM31_TEMP_ROOT", Path(tempfile.gettempdir()) / f"bima-sam31-service-{PORT}"))
-shutil.rmtree(SERVICE_TEMP_ROOT, ignore_errors=True)
-SERVICE_TEMP_ROOT.mkdir(parents=True, exist_ok=True)
 CHECKPOINT_CANDIDATES = [
     Path(os.environ["BIMA_SAM31_CHECKPOINT"]) if os.environ.get("BIMA_SAM31_CHECKPOINT") else None,
     ROOT / "local-models" / "sam3" / "checkpoints" / "sam3.1_multiplex.pt",
@@ -1261,5 +1259,11 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     os.chdir(ROOT)
+    # Startup cleanup belongs here rather than at module import. Isolated chunk
+    # workers import helpers from this module and may receive an input file
+    # inside the same service temp root; import-time cleanup would delete the
+    # worker's own video before inference begins.
+    shutil.rmtree(SERVICE_TEMP_ROOT, ignore_errors=True)
+    SERVICE_TEMP_ROOT.mkdir(parents=True, exist_ok=True)
     print(f"[sam31] service listening on http://{HOST}:{PORT}", flush=True)
     ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()

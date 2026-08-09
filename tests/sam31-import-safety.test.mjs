@@ -1,0 +1,22 @@
+import assert from "node:assert/strict";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+const root = path.resolve(import.meta.dirname, "..");
+const python = path.join(root, ".sam31-venv", "Scripts", "python.exe");
+
+test("importing SAM helpers cannot delete an isolated worker's input", () => {
+  const serviceTemp = mkdtempSync(path.join(os.tmpdir(), "bima-sam-import-safety-"));
+  const sentinel = path.join(serviceTemp, "worker-input.mp4");
+  writeFileSync(sentinel, "not a real video");
+  const result = spawnSync(python, ["-c", `import pathlib, sam31_service; assert pathlib.Path(r'''${sentinel}''').is_file()`], {
+    cwd: path.join(root, "desktop"),
+    encoding: "utf8",
+    windowsHide: true,
+    env: { ...process.env, BIMA_SAM31_TEMP_ROOT: serviceTemp },
+  });
+  assert.equal(result.status, 0, result.stderr);
+});
