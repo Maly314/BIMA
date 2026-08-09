@@ -1,0 +1,682 @@
+{
+  "synthetic": true,
+  "clinical_ground_truth": false,
+  "generator_family": "eval_b",
+  "channels": [
+    "t",
+    "s1_ax",
+    "s1_ay",
+    "s1_az",
+    "s1_gx",
+    "s1_gy",
+    "s1_gz",
+    "s2_ax",
+    "s2_ay",
+    "s2_az",
+    "s2_gx",
+    "s2_gy",
+    "s2_gz",
+    "s3_ax",
+    "s3_ay",
+    "s3_az",
+    "s3_gx",
+    "s3_gy",
+    "s3_gz",
+    "s4_ax",
+    "s4_ay",
+    "s4_az",
+    "s4_gx",
+    "s4_gy",
+    "s4_gz"
+  ],
+  "sequences": [
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0000",
+      "label": "still_or_nonperiodic",
+      "seed": 920948,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0001",
+      "label": "still_or_nonperiodic",
+      "seed": 921945,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0002",
+      "label": "still_or_nonperiodic",
+      "seed": 922942,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0003",
+      "label": "still_or_nonperiodic",
+      "seed": 923939,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0004",
+      "label": "still_or_nonperiodic",
+      "seed": 924936,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0005",
+      "label": "still_or_nonperiodic",
+      "seed": 925933,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0006",
+      "label": "still_or_nonperiodic",
+      "seed": 926930,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0007",
+      "label": "still_or_nonperiodic",
+      "seed": 927927,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0008",
+      "label": "still_or_nonperiodic",
+      "seed": 928924,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0009",
+      "label": "still_or_nonperiodic",
+      "seed": 929921,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0010",
+      "label": "still_or_nonperiodic",
+      "seed": 930918,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0011",
+      "label": "still_or_nonperiodic",
+      "seed": 931915,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0012",
+      "label": "still_or_nonperiodic",
+      "seed": 932912,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0013",
+      "label": "still_or_nonperiodic",
+      "seed": 933909,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0014",
+      "label": "still_or_nonperiodic",
+      "seed": 934906,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0015",
+      "label": "still_or_nonperiodic",
+      "seed": 935903,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0016",
+      "label": "still_or_nonperiodic",
+      "seed": 936900,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0017",
+      "label": "still_or_nonperiodic",
+      "seed": 937897,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0018",
+      "label": "still_or_nonperiodic",
+      "seed": 938894,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0019",
+      "label": "still_or_nonperiodic",
+      "seed": 939891,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0020",
+      "label": "still_or_nonperiodic",
+      "seed": 940888,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0021",
+      "label": "still_or_nonperiodic",
+      "seed": 941885,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0022",
+      "label": "still_or_nonperiodic",
+      "seed": 942882,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-0-0023",
+      "label": "still_or_nonperiodic",
+      "seed": 943879,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0000",
+      "label": "fine_tremor",
+      "seed": 1020948,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0001",
+      "label": "fine_tremor",
+      "seed": 1021945,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0002",
+      "label": "fine_tremor",
+      "seed": 1022942,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0003",
+      "label": "fine_tremor",
+      "seed": 1023939,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0004",
+      "label": "fine_tremor",
+      "seed": 1024936,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0005",
+      "label": "fine_tremor",
+      "seed": 1025933,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0006",
+      "label": "fine_tremor",
+      "seed": 1026930,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0007",
+      "label": "fine_tremor",
+      "seed": 1027927,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0008",
+      "label": "fine_tremor",
+      "seed": 1028924,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0009",
+      "label": "fine_tremor",
+      "seed": 1029921,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0010",
+      "label": "fine_tremor",
+      "seed": 1030918,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0011",
+      "label": "fine_tremor",
+      "seed": 1031915,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0012",
+      "label": "fine_tremor",
+      "seed": 1032912,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0013",
+      "label": "fine_tremor",
+      "seed": 1033909,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0014",
+      "label": "fine_tremor",
+      "seed": 1034906,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0015",
+      "label": "fine_tremor",
+      "seed": 1035903,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0016",
+      "label": "fine_tremor",
+      "seed": 1036900,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0017",
+      "label": "fine_tremor",
+      "seed": 1037897,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0018",
+      "label": "fine_tremor",
+      "seed": 1038894,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0019",
+      "label": "fine_tremor",
+      "seed": 1039891,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0020",
+      "label": "fine_tremor",
+      "seed": 1040888,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0021",
+      "label": "fine_tremor",
+      "seed": 1041885,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0022",
+      "label": "fine_tremor",
+      "seed": 1042882,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-1-0023",
+      "label": "fine_tremor",
+      "seed": 1043879,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0000",
+      "label": "artifact_or_unusable",
+      "seed": 1120948,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0001",
+      "label": "artifact_or_unusable",
+      "seed": 1121945,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0002",
+      "label": "artifact_or_unusable",
+      "seed": 1122942,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0003",
+      "label": "artifact_or_unusable",
+      "seed": 1123939,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0004",
+      "label": "artifact_or_unusable",
+      "seed": 1124936,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0005",
+      "label": "artifact_or_unusable",
+      "seed": 1125933,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0006",
+      "label": "artifact_or_unusable",
+      "seed": 1126930,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0007",
+      "label": "artifact_or_unusable",
+      "seed": 1127927,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0008",
+      "label": "artifact_or_unusable",
+      "seed": 1128924,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0009",
+      "label": "artifact_or_unusable",
+      "seed": 1129921,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0010",
+      "label": "artifact_or_unusable",
+      "seed": 1130918,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0011",
+      "label": "artifact_or_unusable",
+      "seed": 1131915,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0012",
+      "label": "artifact_or_unusable",
+      "seed": 1132912,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0013",
+      "label": "artifact_or_unusable",
+      "seed": 1133909,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0014",
+      "label": "artifact_or_unusable",
+      "seed": 1134906,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0015",
+      "label": "artifact_or_unusable",
+      "seed": 1135903,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0016",
+      "label": "artifact_or_unusable",
+      "seed": 1136900,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0017",
+      "label": "artifact_or_unusable",
+      "seed": 1137897,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0018",
+      "label": "artifact_or_unusable",
+      "seed": 1138894,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0019",
+      "label": "artifact_or_unusable",
+      "seed": 1139891,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0020",
+      "label": "artifact_or_unusable",
+      "seed": 1140888,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0021",
+      "label": "artifact_or_unusable",
+      "seed": 1141885,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0022",
+      "label": "artifact_or_unusable",
+      "seed": 1142882,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "eval_b",
+      "sequence_id": "eval_b-2-0023",
+      "label": "artifact_or_unusable",
+      "seed": 1143879,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    }
+  ]
+}

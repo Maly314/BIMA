@@ -1,0 +1,1330 @@
+{
+  "synthetic": true,
+  "clinical_ground_truth": false,
+  "generator_family": "train_a",
+  "channels": [
+    "t",
+    "s1_ax",
+    "s1_ay",
+    "s1_az",
+    "s1_gx",
+    "s1_gy",
+    "s1_gz",
+    "s2_ax",
+    "s2_ay",
+    "s2_az",
+    "s2_gx",
+    "s2_gy",
+    "s2_gz",
+    "s3_ax",
+    "s3_ay",
+    "s3_az",
+    "s3_gx",
+    "s3_gy",
+    "s3_gz",
+    "s4_ax",
+    "s4_ay",
+    "s4_az",
+    "s4_gx",
+    "s4_gy",
+    "s4_gz"
+  ],
+  "sequences": [
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0000",
+      "label": "still_or_nonperiodic",
+      "seed": 20948,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0001",
+      "label": "still_or_nonperiodic",
+      "seed": 21945,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0002",
+      "label": "still_or_nonperiodic",
+      "seed": 22942,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0003",
+      "label": "still_or_nonperiodic",
+      "seed": 23939,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0004",
+      "label": "still_or_nonperiodic",
+      "seed": 24936,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0005",
+      "label": "still_or_nonperiodic",
+      "seed": 25933,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0006",
+      "label": "still_or_nonperiodic",
+      "seed": 26930,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0007",
+      "label": "still_or_nonperiodic",
+      "seed": 27927,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0008",
+      "label": "still_or_nonperiodic",
+      "seed": 28924,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0009",
+      "label": "still_or_nonperiodic",
+      "seed": 29921,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0010",
+      "label": "still_or_nonperiodic",
+      "seed": 30918,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0011",
+      "label": "still_or_nonperiodic",
+      "seed": 31915,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0012",
+      "label": "still_or_nonperiodic",
+      "seed": 32912,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0013",
+      "label": "still_or_nonperiodic",
+      "seed": 33909,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0014",
+      "label": "still_or_nonperiodic",
+      "seed": 34906,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0015",
+      "label": "still_or_nonperiodic",
+      "seed": 35903,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0016",
+      "label": "still_or_nonperiodic",
+      "seed": 36900,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0017",
+      "label": "still_or_nonperiodic",
+      "seed": 37897,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0018",
+      "label": "still_or_nonperiodic",
+      "seed": 38894,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0019",
+      "label": "still_or_nonperiodic",
+      "seed": 39891,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0020",
+      "label": "still_or_nonperiodic",
+      "seed": 40888,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0021",
+      "label": "still_or_nonperiodic",
+      "seed": 41885,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0022",
+      "label": "still_or_nonperiodic",
+      "seed": 42882,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0023",
+      "label": "still_or_nonperiodic",
+      "seed": 43879,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0024",
+      "label": "still_or_nonperiodic",
+      "seed": 44876,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0025",
+      "label": "still_or_nonperiodic",
+      "seed": 45873,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0026",
+      "label": "still_or_nonperiodic",
+      "seed": 46870,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0027",
+      "label": "still_or_nonperiodic",
+      "seed": 47867,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0028",
+      "label": "still_or_nonperiodic",
+      "seed": 48864,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0029",
+      "label": "still_or_nonperiodic",
+      "seed": 49861,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0030",
+      "label": "still_or_nonperiodic",
+      "seed": 50858,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0031",
+      "label": "still_or_nonperiodic",
+      "seed": 51855,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0032",
+      "label": "still_or_nonperiodic",
+      "seed": 52852,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0033",
+      "label": "still_or_nonperiodic",
+      "seed": 53849,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0034",
+      "label": "still_or_nonperiodic",
+      "seed": 54846,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0035",
+      "label": "still_or_nonperiodic",
+      "seed": 55843,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0036",
+      "label": "still_or_nonperiodic",
+      "seed": 56840,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0037",
+      "label": "still_or_nonperiodic",
+      "seed": 57837,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0038",
+      "label": "still_or_nonperiodic",
+      "seed": 58834,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0039",
+      "label": "still_or_nonperiodic",
+      "seed": 59831,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0040",
+      "label": "still_or_nonperiodic",
+      "seed": 60828,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0041",
+      "label": "still_or_nonperiodic",
+      "seed": 61825,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0042",
+      "label": "still_or_nonperiodic",
+      "seed": 62822,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0043",
+      "label": "still_or_nonperiodic",
+      "seed": 63819,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0044",
+      "label": "still_or_nonperiodic",
+      "seed": 64816,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0045",
+      "label": "still_or_nonperiodic",
+      "seed": 65813,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0046",
+      "label": "still_or_nonperiodic",
+      "seed": 66810,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-0-0047",
+      "label": "still_or_nonperiodic",
+      "seed": 67807,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0000",
+      "label": "fine_tremor",
+      "seed": 120948,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0001",
+      "label": "fine_tremor",
+      "seed": 121945,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0002",
+      "label": "fine_tremor",
+      "seed": 122942,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0003",
+      "label": "fine_tremor",
+      "seed": 123939,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0004",
+      "label": "fine_tremor",
+      "seed": 124936,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0005",
+      "label": "fine_tremor",
+      "seed": 125933,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0006",
+      "label": "fine_tremor",
+      "seed": 126930,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0007",
+      "label": "fine_tremor",
+      "seed": 127927,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0008",
+      "label": "fine_tremor",
+      "seed": 128924,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0009",
+      "label": "fine_tremor",
+      "seed": 129921,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0010",
+      "label": "fine_tremor",
+      "seed": 130918,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0011",
+      "label": "fine_tremor",
+      "seed": 131915,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0012",
+      "label": "fine_tremor",
+      "seed": 132912,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0013",
+      "label": "fine_tremor",
+      "seed": 133909,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0014",
+      "label": "fine_tremor",
+      "seed": 134906,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0015",
+      "label": "fine_tremor",
+      "seed": 135903,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0016",
+      "label": "fine_tremor",
+      "seed": 136900,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0017",
+      "label": "fine_tremor",
+      "seed": 137897,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0018",
+      "label": "fine_tremor",
+      "seed": 138894,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0019",
+      "label": "fine_tremor",
+      "seed": 139891,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0020",
+      "label": "fine_tremor",
+      "seed": 140888,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0021",
+      "label": "fine_tremor",
+      "seed": 141885,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0022",
+      "label": "fine_tremor",
+      "seed": 142882,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0023",
+      "label": "fine_tremor",
+      "seed": 143879,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0024",
+      "label": "fine_tremor",
+      "seed": 144876,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0025",
+      "label": "fine_tremor",
+      "seed": 145873,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0026",
+      "label": "fine_tremor",
+      "seed": 146870,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0027",
+      "label": "fine_tremor",
+      "seed": 147867,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0028",
+      "label": "fine_tremor",
+      "seed": 148864,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0029",
+      "label": "fine_tremor",
+      "seed": 149861,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0030",
+      "label": "fine_tremor",
+      "seed": 150858,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0031",
+      "label": "fine_tremor",
+      "seed": 151855,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0032",
+      "label": "fine_tremor",
+      "seed": 152852,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0033",
+      "label": "fine_tremor",
+      "seed": 153849,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0034",
+      "label": "fine_tremor",
+      "seed": 154846,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0035",
+      "label": "fine_tremor",
+      "seed": 155843,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0036",
+      "label": "fine_tremor",
+      "seed": 156840,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0037",
+      "label": "fine_tremor",
+      "seed": 157837,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0038",
+      "label": "fine_tremor",
+      "seed": 158834,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0039",
+      "label": "fine_tremor",
+      "seed": 159831,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0040",
+      "label": "fine_tremor",
+      "seed": 160828,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0041",
+      "label": "fine_tremor",
+      "seed": 161825,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0042",
+      "label": "fine_tremor",
+      "seed": 162822,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0043",
+      "label": "fine_tremor",
+      "seed": 163819,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0044",
+      "label": "fine_tremor",
+      "seed": 164816,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0045",
+      "label": "fine_tremor",
+      "seed": 165813,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0046",
+      "label": "fine_tremor",
+      "seed": 166810,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-1-0047",
+      "label": "fine_tremor",
+      "seed": 167807,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0000",
+      "label": "artifact_or_unusable",
+      "seed": 220948,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0001",
+      "label": "artifact_or_unusable",
+      "seed": 221945,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0002",
+      "label": "artifact_or_unusable",
+      "seed": 222942,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0003",
+      "label": "artifact_or_unusable",
+      "seed": 223939,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0004",
+      "label": "artifact_or_unusable",
+      "seed": 224936,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0005",
+      "label": "artifact_or_unusable",
+      "seed": 225933,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0006",
+      "label": "artifact_or_unusable",
+      "seed": 226930,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0007",
+      "label": "artifact_or_unusable",
+      "seed": 227927,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0008",
+      "label": "artifact_or_unusable",
+      "seed": 228924,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0009",
+      "label": "artifact_or_unusable",
+      "seed": 229921,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0010",
+      "label": "artifact_or_unusable",
+      "seed": 230918,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0011",
+      "label": "artifact_or_unusable",
+      "seed": 231915,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0012",
+      "label": "artifact_or_unusable",
+      "seed": 232912,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0013",
+      "label": "artifact_or_unusable",
+      "seed": 233909,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0014",
+      "label": "artifact_or_unusable",
+      "seed": 234906,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0015",
+      "label": "artifact_or_unusable",
+      "seed": 235903,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0016",
+      "label": "artifact_or_unusable",
+      "seed": 236900,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0017",
+      "label": "artifact_or_unusable",
+      "seed": 237897,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0018",
+      "label": "artifact_or_unusable",
+      "seed": 238894,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0019",
+      "label": "artifact_or_unusable",
+      "seed": 239891,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0020",
+      "label": "artifact_or_unusable",
+      "seed": 240888,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0021",
+      "label": "artifact_or_unusable",
+      "seed": 241885,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0022",
+      "label": "artifact_or_unusable",
+      "seed": 242882,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0023",
+      "label": "artifact_or_unusable",
+      "seed": 243879,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0024",
+      "label": "artifact_or_unusable",
+      "seed": 244876,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0025",
+      "label": "artifact_or_unusable",
+      "seed": 245873,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0026",
+      "label": "artifact_or_unusable",
+      "seed": 246870,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0027",
+      "label": "artifact_or_unusable",
+      "seed": 247867,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0028",
+      "label": "artifact_or_unusable",
+      "seed": 248864,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0029",
+      "label": "artifact_or_unusable",
+      "seed": 249861,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0030",
+      "label": "artifact_or_unusable",
+      "seed": 250858,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0031",
+      "label": "artifact_or_unusable",
+      "seed": 251855,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0032",
+      "label": "artifact_or_unusable",
+      "seed": 252852,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0033",
+      "label": "artifact_or_unusable",
+      "seed": 253849,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0034",
+      "label": "artifact_or_unusable",
+      "seed": 254846,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0035",
+      "label": "artifact_or_unusable",
+      "seed": 255843,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0036",
+      "label": "artifact_or_unusable",
+      "seed": 256840,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0037",
+      "label": "artifact_or_unusable",
+      "seed": 257837,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0038",
+      "label": "artifact_or_unusable",
+      "seed": 258834,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0039",
+      "label": "artifact_or_unusable",
+      "seed": 259831,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0040",
+      "label": "artifact_or_unusable",
+      "seed": 260828,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0041",
+      "label": "artifact_or_unusable",
+      "seed": 261825,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0042",
+      "label": "artifact_or_unusable",
+      "seed": 262822,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0043",
+      "label": "artifact_or_unusable",
+      "seed": 263819,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0044",
+      "label": "artifact_or_unusable",
+      "seed": 264816,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0045",
+      "label": "artifact_or_unusable",
+      "seed": 265813,
+      "sample_rate_hz": 52,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0046",
+      "label": "artifact_or_unusable",
+      "seed": 266810,
+      "sample_rate_hz": 60,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    },
+    {
+      "family": "train_a",
+      "sequence_id": "train_a-2-0047",
+      "label": "artifact_or_unusable",
+      "seed": 267807,
+      "sample_rate_hz": 100,
+      "duration_s": 9.0,
+      "subtype": "independently_sampled"
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "purpose": "engineering classification of synthetic movement windows; not diagnosis",
+  "clinical_ground_truth": false,
+  "classes": [
+    "still_or_nonperiodic",
+    "fine_tremor",
+    "artifact_or_unusable"
+  ],
+  "window_seconds": 3.0,
+  "training_generator": "train_a",
+  "evaluation_generator": "eval_b (independent signal construction)",
+  "training_sequences": 144,
+  "evaluation_sequences": 72,
+  "training_windows": 432,
+  "evaluation_windows": 216,
+  "confusion_matrix": [
+    [
+      49,
+      0,
+      23
+    ],
+    [
+      15,
+      55,
+      2
+    ],
+    [
+      27,
+      0,
+      45
+    ]
+  ],
+  "classification_report": {
+    "still_or_nonperiodic": {
+      "precision": 0.5384615384615384,
+      "recall": 0.6805555555555556,
+      "f1-score": 0.6012269938650306,
+      "support": 72.0
+    },
+    "fine_tremor": {
+      "precision": 1.0,
+      "recall": 0.7638888888888888,
+      "f1-score": 0.8661417322834646,
+      "support": 72.0
+    },
+    "artifact_or_unusable": {
+      "precision": 0.6428571428571429,
+      "recall": 0.625,
+      "f1-score": 0.6338028169014085,
+      "support": 72.0
+    },
+    "accuracy": 0.6898148148148148,
+    "macro avg": {
+      "precision": 0.7271062271062271,
+      "recall": 0.6898148148148149,
+      "f1-score": 0.7003905143499679,
+      "support": 216.0
+    },
+    "weighted avg": {
+      "precision": 0.7271062271062271,
+      "recall": 0.6898148148148148,
+      "f1-score": 0.7003905143499679,
+      "support": 216.0
+    }
+  },
+  "mean_confidence": 0.8353333674064868,
+  "per_sample_rate_accuracy": {
+    "52": 0.6944444444444444,
+    "60": 0.6805555555555556,
+    "100": 0.6944444444444444
+  },
+  "important_limit": "Synthetic performance cannot establish performance on infants, cerebral palsy, a new attachment, or real clinical artifacts."
+}
