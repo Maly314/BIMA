@@ -28,7 +28,7 @@ from typing import Any
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("BIMA_SAM31_PORT", "4831"))
-PIPELINE_VERSION = "sam31-native-v10"
+PIPELINE_VERSION = "sam31-native-v12"
 ROOT = Path(__file__).resolve().parents[1]
 CHECKPOINT_CANDIDATES = [
     Path(os.environ["BIMA_SAM31_CHECKPOINT"]) if os.environ.get("BIMA_SAM31_CHECKPOINT") else None,
@@ -60,11 +60,11 @@ VIDEO_SAM_INTERVAL_SECONDS = float(os.environ.get("BIMA_SAM31_VIDEO_INTERVAL", "
 FULL_MASK_WIDTH = 640
 FULL_MASK_HEIGHT = 360
 # The multiplex checkpoint peaks near the full 8 GB capacity even at 640x360.
-# Eight 30-fps frames is the largest repeatedly verified state on this machine;
-# more frames can make CUDA terminate the service before an output is finalized.
+# Four 30-fps frames is the largest repeatedly verified state that preserves
+# enough VRAM for Electron while the official multiplex model is active.
 FULL_VIDEO_CHUNK_FRAMES = max(1, int(os.environ.get("BIMA_SAM31_CHUNK_FRAMES", "4")))
-GPU_MEMORY_FRACTION = min(0.95, max(0.50, float(os.environ.get("BIMA_SAM31_GPU_MEMORY_FRACTION", "0.86"))))
-MODEL_WEIGHT_DTYPE = os.environ.get("BIMA_SAM31_WEIGHT_DTYPE", "language-bfloat16").lower()
+GPU_MEMORY_FRACTION = min(0.95, max(0.50, float(os.environ.get("BIMA_SAM31_GPU_MEMORY_FRACTION", "0.75"))))
+MODEL_WEIGHT_DTYPE = os.environ.get("BIMA_SAM31_WEIGHT_DTYPE", "backbones-bfloat16").lower()
 
 
 def _checkpoint_path() -> Path:
@@ -144,12 +144,19 @@ def _load_model() -> Any:
                 use_rope_real=False,
                 async_loading_frames=False,
             )
-            if MODEL_WEIGHT_DTYPE == "language-bfloat16":
+            if MODEL_WEIGHT_DTYPE == "backbones-bfloat16":
                 # The official predictor already computes under BF16 autocast.
-                # Its language backbone is 1.35 GB in FP32 and only produces
-                # the text prompt embedding. Store that backbone in BF16 while
-                # leaving the precision-sensitive visual decoder in FP32.
-                _model.model.detector.backbone.language_backbone.to(dtype=torch.bfloat16)
+                # Store its visual and language feature backbones in that same
+                # inference precision while leaving the downstream decoder in
+                # FP32. This removes duplicated precision without quantizing or
+                # replacing any layer of the official model.
+                for backbone in (
+                    _model.model.detector.backbone.language_backbone,
+                    _model.model.detector.backbone.vision_backbone,
+                ):
+                    for parameter in backbone.parameters():
+                        if parameter.is_floating_point():
+                            parameter.data = parameter.data.to(dtype=torch.bfloat16)
             _model_error = ""
             return _model
         except Exception as exc:

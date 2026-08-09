@@ -996,7 +996,7 @@ export default function VideoView({ session, captureRun, onReadyChange, onSaved,
             // GPU-process loss can no longer erase the captured source video.
             await addRecording(provisionalSamRecording);
             const processed = await processSamRecordedVideo(blob, run, async (samJobId) => {
-              await addRecording({ ...provisionalSamRecording, samJobId, samPipelineVersion:"sam31-native-v10" });
+              await addRecording({ ...provisionalSamRecording, samJobId, samPipelineVersion:"sam31-native-v12" });
             });
             frames = processed.frames;
             savedBlob = processed.annotatedBlob;

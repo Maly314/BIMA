@@ -112,7 +112,7 @@ test("hand capture includes synchronized hand, sensor, and privacy-preserving re
   assert.match(sam31Service, /version="sam3\.1"/);
   assert.match(sam31Service, /_process_video/);
   assert.match(sam31Service, /process-video-full/);
-  assert.match(sam31Service, /sam31-native-v10/);
+  assert.match(sam31Service, /sam31-native-v12/);
   assert.match(sam31Service, /FULL_VIDEO_CHUNK_FRAMES/);
   assert.match(sam31Service, /sam31_chunk_worker\.py/);
   assert.match(sam31Service, /expandable_segments:True/);
@@ -120,12 +120,12 @@ test("hand capture includes synchronized hand, sensor, and privacy-preserving re
   assert.match(sam31Service, /propagate_in_video/);
   assert.match(page, /processSam31Video/);
   assert.match(sam31Client, /process-video-full/);
-  assert.match(sam31Client, /sam31-native-v10/);
+  assert.match(sam31Client, /sam31-native-v12/);
   assert.match(sam31Client, /BIMA version mismatch/);
   assert.match(page, /annotationStatus:"processing"/);
   assert.match(page, /await addRecording\(provisionalSamRecording\)/);
   assert.match(page, /if \(savedMode === "sam31"\)[\s\S]*?videoRef\.current\.srcObject = null/);
-  assert.match(page, /samJobId, samPipelineVersion:"sam31-native-v10"/);
+  assert.match(page, /samJobId, samPipelineVersion:"sam31-native-v12"/);
   assert.match(landing, /recoverSam31Recording/);
   assert.match(sam31Recovery, /recoveredAfterRendererRestart: true/);
   assert.match(sam31Recovery, /annotationStatus: "failed"/);

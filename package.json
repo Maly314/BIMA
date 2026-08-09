@@ -11,6 +11,7 @@
     "start": "vinext start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs tests/sam31-http-contract.test.mjs tests/sam31-resource-policy.test.mjs tests/desktop-contract.test.cjs tests/renderer-recovery.test.cjs && node --experimental-strip-types --test tests/corrected-age.test.mjs tests/teensy-control.test.mjs tests/sensor-calibration.test.mjs tests/pose-display.test.mjs tests/tracking-integrity.test.mjs tests/sam31-client.test.mjs tests/sam31-recovery.test.mjs tests/camera-config.test.mjs tests/recordings.test.mjs tests/recordings-upgrade.test.mjs tests/session-domain.test.mjs",
     "test:electron-recovery": "node tests/electron-renderer-recovery-smoke.cjs",
+    "test:sam-full": "node scripts/sam-full-smoke.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },

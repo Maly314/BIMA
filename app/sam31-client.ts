@@ -1,4 +1,4 @@
-export const SAM_PIPELINE_VERSION = "sam31-native-v10";
+export const SAM_PIPELINE_VERSION = "sam31-native-v12";
 export const SAM_SERVICE_URL = "http://127.0.0.1:4831";
 
 export type Sam31JobProgress = {

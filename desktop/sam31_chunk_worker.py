@@ -17,8 +17,8 @@ from pathlib import Path
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 os.environ.setdefault("CUDA_MODULE_LOADING", "LAZY")
 
-GPU_MEMORY_FRACTION = min(0.95, max(0.50, float(os.environ.get("BIMA_SAM31_GPU_MEMORY_FRACTION", "0.86"))))
-MODEL_WEIGHT_DTYPE = os.environ.get("BIMA_SAM31_WEIGHT_DTYPE", "language-bfloat16").lower()
+GPU_MEMORY_FRACTION = min(0.95, max(0.50, float(os.environ.get("BIMA_SAM31_GPU_MEMORY_FRACTION", "0.75"))))
+MODEL_WEIGHT_DTYPE = os.environ.get("BIMA_SAM31_WEIGHT_DTYPE", "backbones-bfloat16").lower()
 
 from sam31_service import OUTPUT_PROB_THRESH, _load_model, _native_instances
 
