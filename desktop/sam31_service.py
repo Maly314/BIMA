@@ -713,11 +713,12 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
             chunk_paths = sorted(chunks_dir.glob("chunk-*.mp4"))
             if not chunk_paths:
                 raise RuntimeError("Recorded video contained no decodable frames.")
-            chunk_counts: list[int] = []
-            for chunk_path in chunk_paths:
-                chunk_capture = cv2.VideoCapture(str(chunk_path))
-                chunk_counts.append(int(chunk_capture.get(cv2.CAP_PROP_FRAME_COUNT)))
-                chunk_capture.release()
+            # Do not pre-open every chunk through OpenCV in this long-lived
+            # parent process. On Windows those decoder contexts can remain
+            # allocated after release and prevent the isolated SAM worker from
+            # opening its first file. FFprobe exits after each count and returns
+            # all decoder resources to the OS.
+            chunk_counts = [_decoded_frame_count(chunk_path) for chunk_path in chunk_paths]
             if any(count < 1 or count > FULL_VIDEO_CHUNK_FRAMES for count in chunk_counts):
                 raise RuntimeError(f"Internal chunk-size invariant failed: expected 1-{FULL_VIDEO_CHUNK_FRAMES} frames, got {chunk_counts}.")
             frame_count = sum(chunk_counts)
