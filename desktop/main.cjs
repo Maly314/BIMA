@@ -254,7 +254,21 @@ function createWindow() {
       stabilityProbeStarted = true;
       let ticks = 0;
       let errors = 0;
+      let finished = false;
+      let timeout;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        clearInterval(interval);
+        if (timeout) clearTimeout(timeout);
+        fs.appendFileSync(STARTUP_DEBUG, `stability-probe-complete ticks=${ticks} errors=${errors}\n`);
+        app.quit();
+      };
       const interval = setInterval(async () => {
+        if (process.env.BIMA_STABILITY_PROBE_STOP_FILE && fs.existsSync(process.env.BIMA_STABILITY_PROBE_STOP_FILE)) {
+          finish();
+          return;
+        }
         if (!win || win.isDestroyed()) return;
         try {
           await win.webContents.executeJavaScript('document.body && document.body.getBoundingClientRect().width > 0');
@@ -263,11 +277,7 @@ function createWindow() {
           errors += 1;
         }
       }, 1000);
-      setTimeout(() => {
-        clearInterval(interval);
-        fs.appendFileSync(STARTUP_DEBUG, `stability-probe-complete ticks=${ticks} errors=${errors}\n`);
-        app.quit();
-      }, stabilitySeconds * 1000);
+      timeout = setTimeout(finish, stabilitySeconds * 1000);
     }
   });
 }

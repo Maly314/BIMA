@@ -13,6 +13,7 @@
     "test:electron-recovery": "node tests/electron-renderer-recovery-smoke.cjs",
     "test:electron-sam-lifecycle": "node tests/electron-sam-lifecycle-smoke.cjs",
     "test:sam-full": "node scripts/sam-full-smoke.mjs",
+    "test:sam-desktop-full": "node scripts/sam-electron-full-smoke.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },
