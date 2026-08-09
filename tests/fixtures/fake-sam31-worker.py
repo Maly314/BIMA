@@ -32,4 +32,9 @@ destination = Path(sys.argv[2])
 capture = cv2.VideoCapture(str(source))
 frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
 capture.release()
-destination.write_text(json.dumps({str(index): [] for index in range(frame_count)}), encoding="utf-8")
+frames = {str(index): [] for index in range(frame_count)}
+if frame_count:
+    # Exercise the real RLE decode/overlay path instead of allowing tests to
+    # pass with empty masks that skip all annotation rendering.
+    frames["0"] = [{"rle": [0, 1, 57_599], "maskWidth": 320, "maskHeight": 180}]
+destination.write_text(json.dumps(frames), encoding="utf-8")

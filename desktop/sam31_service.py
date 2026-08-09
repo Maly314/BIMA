@@ -309,6 +309,7 @@ def _binary_rle(mask: Any) -> list[int]:
 
 def _decode_binary_rle(runs: list[int], width: int, height: int) -> Any:
     """Decode the compact alternating-run representation used by the web UI."""
+    import numpy as np
 
     flat = np.zeros(width * height, dtype=np.uint8)
     cursor = 0
@@ -795,32 +796,36 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
                 tracked = {int(index): instances for index, instances in json.loads(chunk_result_path.read_text(encoding="utf-8")).items()}
                 capture = cv2.VideoCapture(str(chunk_path))
                 local_index = 0
-                while True:
-                    ok, image = capture.read()
-                    if not ok:
-                        break
-                    instances = tracked.get(local_index, [])
-                    for instance_index, instance in enumerate(instances):
-                        mask = cv2.resize(_decode_binary_rle(instance["rle"], instance["maskWidth"], instance["maskHeight"]), (width, height), interpolation=cv2.INTER_NEAREST).astype(bool)
-                        color = colors[instance_index % len(colors)]
-                        overlay = image.copy(); overlay[mask] = color
-                        image = cv2.addWeighted(overlay, 0.34, image, 0.66, 0)
-                        contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                        cv2.drawContours(image, contours, -1, color, 2, cv2.LINE_AA)
-                    sidecar_frames.append(
-                    {
-                        "frameIndex": rendered,
-                        "sourceVideoTimeMs": round(rendered * 1000 / fps, 3),
-                        "segments": instances,
-                        "source": "sam31-native-propagation",
-                    }
-                    )
-                    if encoder.stdin is None:
-                        raise RuntimeError("Native SAM video encoder did not start.")
-                    encoder.stdin.write(image.tobytes())
-                    rendered += 1
-                    local_index += 1
-                capture.release()
+                try:
+                    if not capture.isOpened():
+                        raise RuntimeError(f"Video chunk {chunk_number} could not be reopened for rendering.")
+                    while True:
+                        ok, image = capture.read()
+                        if not ok:
+                            break
+                        instances = tracked.get(local_index, [])
+                        for instance_index, instance in enumerate(instances):
+                            mask = cv2.resize(_decode_binary_rle(instance["rle"], instance["maskWidth"], instance["maskHeight"]), (width, height), interpolation=cv2.INTER_NEAREST).astype(bool)
+                            color = colors[instance_index % len(colors)]
+                            overlay = image.copy(); overlay[mask] = color
+                            image = cv2.addWeighted(overlay, 0.34, image, 0.66, 0)
+                            contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                            cv2.drawContours(image, contours, -1, color, 2, cv2.LINE_AA)
+                        sidecar_frames.append(
+                            {
+                                "frameIndex": rendered,
+                                "sourceVideoTimeMs": round(rendered * 1000 / fps, 3),
+                                "segments": instances,
+                                "source": "sam31-native-propagation",
+                            }
+                        )
+                        if encoder.stdin is None:
+                            raise RuntimeError("Native SAM video encoder did not start.")
+                        encoder.stdin.write(image.tobytes())
+                        rendered += 1
+                        local_index += 1
+                finally:
+                    capture.release()
                 if local_index != expected_chunk_frames:
                     raise RuntimeError(f"Video chunk {chunk_number} decoded incompletely ({local_index}/{expected_chunk_frames} frames).")
                 print(f"[sam31-full] job={job_id} chunk={chunk_number}/{len(chunk_paths)} frames={local_index} rendered", flush=True)
@@ -871,7 +876,10 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
                 if pipe and not pipe.closed:
                     pipe.close()
         if job.get("status") != "complete":
-            _remove_tree_with_retries(job_dir)
+            try:
+                _remove_tree_with_retries(job_dir)
+            except Exception as cleanup_error:
+                failure_message = f"{failure_message}; temporary-data cleanup failed: {cleanup_error}" if failure_message else str(cleanup_error)
         if failure_message:
             job.update({"phase": "failed", "status": "failed", "error": failure_message, "cleanupComplete": True})
 

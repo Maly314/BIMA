@@ -20,3 +20,12 @@ test("importing SAM helpers cannot delete an isolated worker's input", () => {
   });
   assert.equal(result.status, 0, result.stderr);
 });
+
+test("RLE decoding owns its NumPy dependency and renders a binary mask", () => {
+  const result = spawnSync(python, ["-c", "import sam31_service; mask=sam31_service._decode_binary_rle([0,1,3],2,2); assert mask.shape == (2,2); assert mask.tolist() == [[1,0],[0,0]]"], {
+    cwd: path.join(root, "desktop"),
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  assert.equal(result.status, 0, result.stderr);
+});
