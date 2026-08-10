@@ -362,16 +362,32 @@ input:focus, select:focus { border-color:var(--teal); background:rgba(255,255,25
 }
 
 @media (max-width:700px) {
-  .landing-header { align-items:flex-start; flex-direction:column; }
-  .landing-title-block { align-items:flex-start; gap:13px; }
-  .landing-title-block .brand-divider { display:none; }
-  .landing-title-block { flex-wrap:wrap; }
+  /* The in-app browser is often a narrow desktop pane, not a phone. Preserve
+     the visual application frame so the responsive view still reads as BIMA
+     instead of looking like an unstyled document. */
+  .page-shell { padding:8px; }
+  .app-window {
+    min-height:calc(100vh - 16px);
+    border:1px solid var(--glass-edge);
+    border-radius:12px;
+    box-shadow:0 14px 40px rgba(18,40,52,.16), var(--glass-highlight);
+  }
+  .landing-header { align-items:stretch; flex-direction:column; gap:16px; padding:18px 20px; }
+  .landing-title-block { display:grid; grid-template-columns:auto 1px minmax(0,1fr); align-items:center; gap:14px; width:100%; }
+  .landing-title-block .brand-divider { display:block; min-height:42px; }
+  .landing-title-block h1 { font-size:22px; line-height:1.1; }
+  .landing-header p { margin-top:4px; font-size:14px; }
+  .landing-header .add-patient { width:100%; height:48px; justify-content:center; font-size:17px; }
   .brand-copy small { white-space:normal; }
   .title-group .brand-lockup,.title-group .title-divider { display:none; }
   .sync-capture-bar { grid-template-columns:1fr; }
   .sync-capture-bar button { width:100%; }
   .patient-details-grid { grid-template-columns:1fr; gap:0; }
-  .setup-bar { align-items:flex-start; flex-direction:column; }
+  .setup-bar { align-items:center; flex-direction:row; padding:13px 20px; }
+  .setup-bar .btn-cal { flex:none; height:40px; padding:0 14px; }
+  .setup-msg { display:none; }
+  .landing-body { padding:20px; min-height:300px; }
+  .landing-empty { min-height:240px; font-size:16px; }
   .calibration-stage { grid-template-columns:58px 1fr; padding:16px 20px; gap:12px; }
   .calibration-stage-value { width:50px; height:50px; font-size:22px; }
 }
