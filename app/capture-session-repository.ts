@@ -1,5 +1,11 @@
 import { CAPTURE_SESSION_STORE, openRecordingDatabase } from "./recording-database.ts";
 import type { CaptureAsset, CaptureSessionRecord } from "./recording-types.ts";
+import { archiveCaptureSession } from "./desktop-storage.ts";
+
+async function requireArchiveSuccess(session: CaptureSessionRecord): Promise<void> {
+  const result = await archiveCaptureSession(session);
+  if (result.error) throw new Error(result.error);
+}
 
 export async function addCaptureSession(session: CaptureSessionRecord): Promise<void> {
   if (typeof indexedDB === "undefined") return;
@@ -10,11 +16,13 @@ export async function addCaptureSession(session: CaptureSessionRecord): Promise<
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);
   });
+  await requireArchiveSuccess(session);
 }
 
 export async function updateCaptureSession(id: string, update: Partial<CaptureSessionRecord>): Promise<void> {
   if (typeof indexedDB === "undefined") return;
   const database = await openRecordingDatabase();
+  let persisted: CaptureSessionRecord | undefined;
   await new Promise<void>((resolve, reject) => {
     const transaction = database.transaction(CAPTURE_SESSION_STORE, "readwrite");
     const store = transaction.objectStore(CAPTURE_SESSION_STORE);
@@ -24,16 +32,19 @@ export async function updateCaptureSession(id: string, update: Partial<CaptureSe
       if (!current) return;
       const next = { ...current, ...update, id };
       if (current.status === "complete" && update.status === "processing") next.status = "complete";
+      persisted = next;
       store.put(next);
     };
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);
   });
+  if (persisted) await requireArchiveSuccess(persisted);
 }
 
 export async function addCaptureAsset(id: string, asset: CaptureAsset): Promise<void> {
   if (typeof indexedDB === "undefined") return;
   const database = await openRecordingDatabase();
+  let persisted: CaptureSessionRecord | undefined;
   await new Promise<void>((resolve, reject) => {
     const transaction = database.transaction(CAPTURE_SESSION_STORE, "readwrite");
     const store = transaction.objectStore(CAPTURE_SESSION_STORE);
@@ -49,12 +60,14 @@ export async function addCaptureAsset(id: string, asset: CaptureAsset): Promise<
         (item) => item.kind === "pose" && item.metadata?.annotationStatus !== "failed",
       );
       const terminalFailure = asset.kind === "pose" && asset.metadata?.annotationStatus === "failed";
-      store.put({ ...current, assets, status: complete ? "complete" : terminalFailure ? "partial" : current.status });
+      persisted = { ...current, assets, status: complete ? "complete" : terminalFailure ? "partial" : current.status };
+      store.put(persisted);
     };
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);
     transaction.onabort = () => reject(transaction.error ?? new Error(`Capture session ${id} was not found`));
   });
+  if (persisted) await requireArchiveSuccess(persisted);
 }
 
 export async function getCaptureSession(id: string): Promise<CaptureSessionRecord | undefined> {

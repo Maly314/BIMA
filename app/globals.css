@@ -237,6 +237,16 @@ input:focus, select:focus { border-color:var(--teal); background:rgba(255,255,25
 .add-patient:hover { background:linear-gradient(180deg,#0f97a8,#0a6873); transform:translateY(-1px); box-shadow:0 9px 22px rgba(8,120,134,.4), inset 0 1px 0 rgba(255,255,255,.25); }
 .add-patient:active { transform:scale(.98); }
 .add-patient .plus { font-size:25px; line-height:1; margin-top:-2px; }
+.storage-bar { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:14px 40px; border-bottom:1px solid var(--line); background:rgba(8,120,134,.055); }
+.storage-info { display:flex; align-items:center; gap:11px; min-width:0; }
+.storage-info > div { display:grid; min-width:0; gap:2px; }
+.storage-info strong { font-size:15px; font-weight:620; }
+.storage-info span { overflow:hidden; color:#667078; font-size:13px; text-overflow:ellipsis; white-space:nowrap; }
+.storage-info small { color:#a63c3c; font-size:12px; }
+.storage-info em { color:#33745a; font-size:12px; font-style:normal; }
+.btn-storage { flex:none; height:40px; padding:0 17px; border:1px solid rgba(8,120,134,.38); border-radius:8px; color:var(--teal); background:rgba(255,255,255,.7); cursor:pointer; box-shadow:var(--glass-highlight); }
+.btn-storage:hover:not(:disabled) { background:rgba(255,255,255,.94); }
+.btn-storage:disabled { opacity:.5; cursor:default; }
 .setup-bar { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 40px; border-bottom:1px solid var(--line); background:rgba(255,255,255,.3); }
 .setup-info { display:flex; align-items:center; gap:10px; font-size:15px; color:#4d5158; }
 .setup-msg { color:#6e747a; }
@@ -384,6 +394,9 @@ input:focus, select:focus { border-color:var(--teal); background:rgba(255,255,25
   .sync-capture-bar button { width:100%; }
   .patient-details-grid { grid-template-columns:1fr; gap:0; }
   .setup-bar { align-items:center; flex-direction:row; padding:13px 20px; }
+  .storage-bar { align-items:stretch; flex-direction:column; padding:14px 20px; gap:11px; }
+  .storage-info span { white-space:normal; overflow-wrap:anywhere; }
+  .btn-storage { width:100%; }
   .setup-bar .btn-cal { flex:none; height:40px; padding:0 14px; }
   .setup-msg { display:none; }
   .landing-body { padding:20px; min-height:300px; }

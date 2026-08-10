@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { calculateCorrectedAge, formatAgeDays, formatPma } from "./corrected-age";
-import { deleteRecording, getCalibration, getLastPatient, listRecordings, setCalibration, type Calibration, type Recording } from "./recordings";
+import { deleteRecording, getCalibration, getCaptureSession, getLastPatient, listRecordings, setCalibration, type Calibration, type Recording } from "./recordings";
 import { ageWeeks, createPatientSession, detailedAgeLabel, type Session } from "./session-domain";
 import { CALIBRATION_CAPTURE_MS, CALIBRATION_SETTLE_MS, INVALID_RE, buildCalibration, calibrationIsUsable, parseImuLine, type ImuSample } from "./sensor-calibration";
 import BrandLockup from "./BrandLockup";
 import { markInterruptedSam31Recordings, recoverSam31Recording } from "./sam31-recovery";
+import { archiveCaptureSession, archiveRecording, chooseStorageFolder, getStorageInfo, type StorageInfo } from "./desktop-storage";
 
 function formatDate(ms: number) {
   return new Date(ms).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
@@ -35,7 +36,7 @@ function RecordingCard({ recording, onDelete }: { recording: Recording; onDelete
         <button type="button" className="danger" onClick={() => onDelete(recording.id)}>Delete</button>
         <button type="button" onClick={() => download(recording.blob, recording.filename)}>{recording.annotationStatus === "failed" || recording.filename.endsWith("-sam31-raw.webm") ? "Raw video" : recording.rawBlob ? "Annotated video" : recording.kind === "pose" ? "Pose video" : recording.kind === "video" ? "Video" : "Download"}</button>
         {recording.rawBlob && recording.rawFilename && <button type="button" onClick={() => download(recording.rawBlob!, recording.rawFilename!)}>Raw video</button>}
-        {recording.sidecarBlob && recording.sidecarFilename && <button type="button" onClick={() => download(recording.sidecarBlob!, recording.sidecarFilename!)}>Tracking data</button>}
+        {recording.sidecarBlob && recording.sidecarFilename && <button type="button" onClick={() => download(recording.sidecarBlob!, recording.sidecarFilename!)}>{recording.kind === "sensor" ? "Analysis CSV" : "Tracking data"}</button>}
       </div>
     </div>
   );
@@ -126,6 +127,31 @@ export default function Landing({ onStart }: { onStart: (session: Session) => vo
   const [dialogOpen, setDialogOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "suspected" | "not">("all");
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [storage, setStorage] = useState<(StorageInfo & { desktop?: boolean }) | null>(null);
+  const [storageError, setStorageError] = useState("");
+  const [storageNotice, setStorageNotice] = useState("");
+  const [storageBusy, setStorageBusy] = useState(false);
+
+  useEffect(() => { void getStorageInfo().then(setStorage).catch((error) => setStorageError(String(error))); }, []);
+  const selectStorageFolder = async () => {
+    setStorageError("");
+    setStorageNotice("");
+    try {
+      const selected = await chooseStorageFolder();
+      setStorage(selected);
+      if (!selected.configured) return;
+      setStorageBusy(true);
+      const recordingResults = await Promise.all(recordings.map(archiveRecording));
+      const sessionIds = [...new Set(recordings.map((recording) => recording.captureSessionId).filter((id): id is string => !!id))];
+      const sessions = (await Promise.all(sessionIds.map(getCaptureSession))).filter((session) => !!session);
+      const sessionResults = await Promise.all(sessions.map(archiveCaptureSession));
+      const errors = [...recordingResults, ...sessionResults].filter((result) => result.error);
+      if (errors.length) setStorageError(`${errors.length} existing item${errors.length === 1 ? "" : "s"} could not be archived. New captures will retry automatically.`);
+      else setStorageNotice(recordings.length ? `${recordings.length} existing recording${recordings.length === 1 ? "" : "s"} archived. Future captures save automatically.` : "Future captures will save here automatically.");
+    }
+    catch (error) { setStorageError(error instanceof Error ? error.message : String(error)); }
+    finally { setStorageBusy(false); }
+  };
 
   const refresh = useCallback(async () => {
     const items = await listRecordings();
@@ -279,6 +305,13 @@ export default function Landing({ onStart }: { onStart: (session: Session) => vo
         </div>
         <button type="button" className="add-patient" onClick={() => setDialogOpen(true)}><span className="plus">+</span> Add patient</button>
       </header>
+      <div className="storage-bar">
+        <div className="storage-info">
+          <span className={`status-dot ${storage?.configured && storage.available ? "connected" : "pending"}`} />
+          <div><strong>Data archive</strong><span title={storage?.directory || ""}>{storage?.configured ? storage.directory : storage?.desktop === false ? "Open the desktop app to choose a folder" : "Choose where recordings and analysis files are stored"}</span>{storageNotice && <em>{storageNotice}</em>}{storageError && <small>{storageError}</small>}</div>
+        </div>
+        <button type="button" className="btn-storage" onClick={selectStorageFolder} disabled={storage?.desktop === false || storageBusy}>{storageBusy ? "Archiving…" : storage?.configured ? "Change folder" : "Choose data folder"}</button>
+      </div>
       <div className="setup-bar">
         <div className="setup-info">
           <span className={`status-dot ${calInfo ? "connected" : "pending"}`} />
@@ -320,7 +353,7 @@ export default function Landing({ onStart }: { onStart: (session: Session) => vo
         <div className="dialog-overlay" role="dialog" aria-modal="true" aria-label="Delete recording" onClick={() => setConfirmId(null)}>
           <div className="dialog confirm-dialog" onClick={(e) => e.stopPropagation()}>
             <h2>Delete recording?</h2>
-            <p className="confirm-text">This permanently deletes the <strong>Patient {confirmTarget.patientNumber}</strong> {confirmTarget.kind} recording. This can’t be undone.</p>
+            <p className="confirm-text">This removes the <strong>Patient {confirmTarget.patientNumber}</strong> {confirmTarget.kind} recording from the app. Files already written to the selected data archive are retained.</p>
             <div className="dialog-actions">
               <button type="button" className="btn-secondary" onClick={() => setConfirmId(null)}>Cancel</button>
               <button type="button" className="btn-danger" onClick={doDelete}>Delete</button>

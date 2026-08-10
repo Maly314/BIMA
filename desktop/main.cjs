@@ -17,10 +17,11 @@ const path = require('node:path');
 const fs = require('node:fs');
 const http = require('node:http');
 const { spawn, spawnSync } = require('node:child_process');
-const { app, BrowserWindow, session, shell } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, session, shell } = require('electron');
 const { applyCaptureRuntimeSwitches, parseListeningPids } = require('./capture-runtime.cjs');
 const { isAllowedPermission, selectSerialPort } = require('./device-policy.cjs');
 const { wireRendererRecovery } = require('./renderer-recovery.cjs');
+const { createStorageManager } = require('./storage-manager.cjs');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.BIMA_PORT || 4820);
@@ -49,6 +50,7 @@ process.on('unhandledRejection', (error) => fs.appendFileSync(STARTUP_DEBUG, `re
 let win = null;
 let server = null;
 let sam31Server = null;
+let storageManager = null;
 
 /* Only one instance — a second launch focuses the existing window. */
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
@@ -179,7 +181,13 @@ function createWindow() {
     titleBarOverlay: { color: '#edf2f3', symbolColor: '#3d424a', height: 45 },
     /* backgroundThrottling:false — rAF and timers keep full rate even if the
        window is minimised or covered, so a running capture never stalls. */
-    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false },
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      backgroundThrottling: false,
+      preload: path.join(__dirname, 'preload.cjs'),
+    },
   });
 
   win.once('ready-to-show', () => {
@@ -314,6 +322,32 @@ function wireDevices(ses) {
   });
 }
 
+function wireStorageIpc() {
+  storageManager = createStorageManager(path.join(app.getPath('userData'), 'bima-storage.json'));
+  const trusted = (event) => {
+    try { return new URL(event.senderFrame.url).origin === APP_URL; }
+    catch { return false; }
+  };
+  const handle = (channel, operation) => ipcMain.handle(channel, (event, ...args) => {
+    if (!trusted(event)) throw new Error('Storage access is restricted to the BIMA desktop app');
+    return operation(...args);
+  });
+  handle('bima-storage:get-folder', () => storageManager.getInfo());
+  handle('bima-storage:choose-folder', async () => {
+    const result = await dialog.showOpenDialog(win, {
+      title: 'Choose BIMA data folder',
+      buttonLabel: 'Use this folder',
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    if (result.canceled || !result.filePaths[0]) return storageManager.getInfo();
+    return storageManager.setDirectory(result.filePaths[0]);
+  });
+  handle('bima-storage:begin', (relativePath, expectedBytes) => storageManager.begin(relativePath, expectedBytes));
+  handle('bima-storage:append', (token, chunk) => storageManager.append(token, chunk));
+  handle('bima-storage:finish', (token) => storageManager.finish(token));
+  handle('bima-storage:abort', (token) => storageManager.abort(token));
+}
+
 /* ---- boot --------------------------------------------------------------- */
 
 app.whenReady().then(async () => {
@@ -330,6 +364,7 @@ app.whenReady().then(async () => {
     fs.appendFileSync(STARTUP_DEBUG, `gpu-features-error ${error?.stack || error}\n`);
   }
   wireDevices(session.defaultSession);
+  wireStorageIpc();
   createWindow();
   startSam31Server();
   if (process.env.BIMA_QUIT_PROBE_FILE) {
@@ -424,4 +459,4 @@ app.on('child-process-gone', (_event, details) => {
 });
 
 app.on('window-all-closed', () => { killServer(); app.quit(); });
-app.on('will-quit', killServer);
+app.on('will-quit', () => { storageManager?.abortAll(); killServer(); });

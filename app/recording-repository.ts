@@ -1,5 +1,6 @@
 import { CAPTURE_SESSION_STORE, openRecordingDatabase, RECORDING_STORE } from "./recording-database.ts";
 import { setLastPatient } from "./local-preferences.ts";
+import { archiveRecording, type RecordingSaveResult } from "./desktop-storage.ts";
 import type { CaptureSessionRecord, Recording } from "./recording-types.ts";
 
 export async function listRecordings(): Promise<Recording[]> {
@@ -12,8 +13,8 @@ export async function listRecordings(): Promise<Recording[]> {
   });
 }
 
-export async function addRecording(recording: Recording): Promise<void> {
-  if (typeof indexedDB === "undefined") return;
+export async function addRecording(recording: Recording): Promise<RecordingSaveResult> {
+  if (typeof indexedDB === "undefined") return { archived: false };
   const database = await openRecordingDatabase();
   await new Promise<void>((resolve, reject) => {
     const transaction = database.transaction(RECORDING_STORE, "readwrite");
@@ -22,6 +23,7 @@ export async function addRecording(recording: Recording): Promise<void> {
     transaction.onerror = () => reject(transaction.error);
   });
   setLastPatient(recording.patientNumber);
+  return archiveRecording(recording);
 }
 
 export async function deleteRecording(id: string): Promise<void> {

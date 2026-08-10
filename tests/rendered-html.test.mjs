@@ -24,6 +24,8 @@ test("server renders the movement capture application", async () => {
   assert.match(html, /Patients &amp; recordings/);
   assert.match(html, /Add patient/);
   assert.match(html, /Calibrate sensors/);
+  assert.match(html, /Data archive/);
+  assert.match(html, /Choose data folder/);
   assert.doesNotMatch(html, /Your site is taking shape|codex-preview/i);
 });
 

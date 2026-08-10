@@ -8,6 +8,7 @@ import { parseTeensyDisplayState, writeTeensyDisplayState, type TeensyRequestedS
 import { addClockPoint, newClockFit, parseDeviceClockLine, parseInvalidImuLine, solveClockFit, type DeviceClockStamp, calibratedMovement, calibrationIsUsable, parseImuLine, type ImuSample } from "./sensor-calibration";
 import SensorBoard3D from "./SensorBoard3D";
 import type { SensorViewProps } from "./capture-view-types";
+import { buildSensorLongCsvParts, buildSensorWideCsvParts, type SensorRow } from "./sensor-export";
 
 const sensors = [
   { key: "left-arm", label: "Left arm", placement: "Left wrist" },
@@ -15,11 +16,6 @@ const sensors = [
   { key: "left-leg", label: "Left leg", placement: "Left ankle" },
   { key: "right-leg", label: "Right leg", placement: "Right ankle" },
 ];
-const csvCell = (value: unknown) => {
-  const text = String(value ?? "");
-  return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-};
-
 function EmptyPlot() {
   return (
     <div className="plot" aria-label="Waiting for sensor data">
@@ -480,15 +476,16 @@ export default function SensorView({ session, captureRun, onReadyChange, onSaved
       setStatus("Capture stopped · waiting for Teensy STANDBY confirmation…");
       void sendTeensyState("standby");
       const run = captureRun;
-      const rows = samplesRef.current;
-      const keys = rows.length
-        ? Array.from(rows.reduce((set: Set<string>, row) => { Object.keys(row).forEach((key) => set.add(key)); return set; }, new Set<string>()))
-        : ["session_id", "packet_index", "session_time_ms", "epoch_ms", "t", "patient_number", "study_id", "study_date", "age_days", "corrected_age_days", "chronological_age_days", "gestational_age_birth_days", "postmenstrual_age_days", "age_basis", "weight_kg"];
-      const csv = [keys.map(csvCell).join(","), ...rows.map((row) => keys.map((key) => csvCell(row[key])).join(","))].join("\n");
-      const blob = new Blob([csv], { type: "text/csv" });
+      const rows = samplesRef.current as SensorRow[];
+      // Build bounded CSV string batches. A five-minute high-rate run can have
+      // hundreds of thousands of rows; one giant joined string creates a large
+      // temporary heap spike exactly when video post-processing also starts.
+      const blob = new Blob(buildSensorWideCsvParts(rows), { type: "text/csv;charset=utf-8" });
+      const analysisBlob = new Blob(buildSensorLongCsvParts(rows), { type: "text/csv;charset=utf-8" });
       const recordingId = newId();
       const baseName = `patient-${session.patientNumber}-${session.suspected ? "susp" : "non"}-wk${ageWeeks(session)}-${run.id.slice(0, 8)}`;
       const filename = `${baseName}-sensors.csv`;
+      const analysisFilename = `${baseName}-sensors-long.csv`;
       const streamStartOffsetMs = Number(rows[0]?.session_time_ms ?? 0);
       setDownloadUrl(URL.createObjectURL(blob));
       const activeSensors = sensors.map((_, index) => ({ imu: index + 1, placement: placementsRef.current[index] || "unspecified", calibration: calibRef.current[index] }));
@@ -503,9 +500,11 @@ export default function SensorView({ session, captureRun, onReadyChange, onSaved
         ...clinicalAgeMetadata(session),
         studyDate: session.studyDate, weightKg: session.weightKg, studyId: run.studyId, note: run.note,
         kind: "sensor", date: run.stoppedAtEpochMs ?? Date.now(), blob, filename,
-        size: blob.size, thumbnail: canvas0.current?.toDataURL("image/png"), captureSessionId: run.id,
+        size: blob.size + analysisBlob.size, thumbnail: canvas0.current?.toDataURL("image/png"), captureSessionId: run.id,
+        sidecarBlob: analysisBlob, sidecarFilename: analysisFilename,
         sync: { schemaVersion: CAPTURE_SCHEMA_VERSION, clock: "performance-time-origin", startedAtEpochMs: run.startedAtEpochMs, streamStartOffsetMs, sampleCount: rows.length },
-      }).then(() => addCaptureAsset(run.id, { recordingId, kind: "sensor", filename, sampleCount: rows.length, streamStartOffsetMs, size: blob.size, metadata: {
+      }).then(async (archive) => {
+        await addCaptureAsset(run.id, { recordingId, kind: "sensor", filename, sidecarFilename: analysisFilename, sampleCount: rows.length, streamStartOffsetMs, size: blob.size + analysisBlob.size, metadata: {
         sensors: activeSensors,
         csvTimeColumn: "session_time_ms",
         deviceClock: {
@@ -519,7 +518,9 @@ export default function SensorView({ session, captureRun, onReadyChange, onSaved
             : 0,
           hostVsDeviceFit: clockFit,
         },
-      } }))
+        } });
+        if (archive.error) throw new Error(archive.error);
+      })
         .then(() => onSaved("sensor", true)).catch(() => onSaved("sensor", false));
       captureRef.current = null;
     }

@@ -7,6 +7,27 @@ without re-recording anything.
 Written 2026-07-30 against the current implementation in `app/recordings.ts`,
 `app/capture-sync.ts` and `app/page.tsx`.
 
+## 2026-08-10 implementation update
+
+The desktop app now implements the first practical disk-archive layer described
+below. The landing screen lets the operator choose a persistent folder. Existing
+recordings are backfilled immediately and future sensor/video recordings are
+written automatically under `participants/sub-NNNN/sessions/ses-ID/` while the
+IndexedDB copy remains available for renderer-crash recovery.
+
+Disk writes are streamed in 4 MiB chunks, finalized through a temporary file,
+restricted to relative paths under the selected root, and accompanied by
+SHA-256 integrity metadata. Each synchronized session also has `manifest.json`,
+`session_summary.csv`, participant metadata, and a data dictionary. Sensor data
+is preserved as a stable wide acquisition table and additionally exported as a
+long, one-row-per-sensor analysis CSV with explicit units and validity fields.
+CSV files use UTF-8 BOM, CRLF rows, deterministic columns, and formula-injection
+protection for operator-entered text so they open cleanly in Excel.
+
+The longer-term incremental-flush and rebuildable-index work in sections 3.1 and
+3.5 is still pending; IndexedDB is therefore still a recovery copy rather than a
+fully disposable cache.
+
 ---
 
 ## 1. What the current build does
