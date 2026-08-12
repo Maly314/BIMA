@@ -188,12 +188,6 @@ input:focus, select:focus { border-color:var(--teal); background:rgba(255,255,25
 .overlay-key i { width:9px; height:9px; border-radius:50%; display:block; }
 .overlay-key .pose-key, .overlay-key .raw-key { background:#24d2c1; }.overlay-key .hand-key { background:#ffd166; }
 .video-panel { padding:30px 26px; border-left:1px solid var(--line); display:flex; flex-direction:column; background:var(--glass-soft); }
-.inference-mode-switch { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:5px; margin:0 0 24px; border:1px solid var(--line); border-radius:10px; background:rgba(41,52,58,.055); }
-.inference-mode-switch button { min-height:45px; padding:7px 10px; border:1px solid transparent; border-radius:7px; background:transparent; color:#5e666c; font:inherit; font-size:13px; font-weight:650; cursor:pointer; }
-.inference-mode-switch button.active { background:#fff; color:#087886; border-color:rgba(8,120,134,.23); box-shadow:0 2px 8px rgba(23,38,45,.09); }
-.inference-mode-switch button.experimental { display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; }
-.inference-mode-switch button.experimental span { color:#8a6b16; font-size:9px; letter-spacing:.11em; text-transform:uppercase; margin-bottom:3px; }
-.inference-mode-switch button:disabled { cursor:not-allowed; opacity:.58; }
 .sam-record-button { width:100%; min-height:46px; margin:-8px 0 22px; border:1px solid transparent; border-radius:8px; color:#fff; background:linear-gradient(180deg,#0d8b9b,var(--teal)); box-shadow:0 5px 14px rgba(8,120,134,.28), inset 0 1px 0 rgba(255,255,255,.2); font:inherit; font-size:14px; font-weight:700; cursor:pointer; transition:background var(--dur) var(--ease), transform var(--dur) var(--ease); }
 .sam-record-button:hover:not(:disabled):not(.recording) { background:linear-gradient(180deg,#0f97a8,#0a6873); transform:translateY(-1px); }
 .sam-record-button.recording { background:linear-gradient(180deg,#b34440,#a63c3c); }

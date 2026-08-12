@@ -115,7 +115,12 @@ function startSam31Server() {
       ...process.env,
       BIMA_SAM31_PORT: String(SAM31_PORT),
       BIMA_APP_ORIGIN: APP_URL,
+      // Keep the packaged desktop origin locked down while allowing the
+      // separately served local refactor preview to exercise the same SAM
+      // pipeline. These are exact loopback origins, never a wildcard.
+      BIMA_APP_ORIGINS: [APP_URL, 'http://127.0.0.1:4822', 'http://localhost:4822'].join(','),
       BIMA_SAM31_CHUNK_FRAMES: '4',
+      BIMA_SAM31_CHUNKS_PER_WORKER: '64',
       BIMA_SAM31_GPU_MEMORY_FRACTION: '0.75',
       BIMA_SAM31_WEIGHT_DTYPE: 'backbones-bfloat16',
       CUDA_MODULE_LOADING: 'LAZY',

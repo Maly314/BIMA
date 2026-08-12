@@ -49,6 +49,7 @@ next-env.d.ts
 
 # local editor/agent state
 /.claude/
+/.timeline-render-profile/
 
 # Python caches
 __pycache__/

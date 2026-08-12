@@ -29,6 +29,11 @@ from typing import Any
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("BIMA_SAM31_PORT", "4831"))
 APP_ORIGIN = os.environ.get("BIMA_APP_ORIGIN", "http://127.0.0.1:4820").rstrip("/")
+APP_ORIGINS = {
+    origin.strip().rstrip("/")
+    for origin in os.environ.get("BIMA_APP_ORIGINS", APP_ORIGIN).split(",")
+    if origin.strip()
+}
 PIPELINE_VERSION = "sam31-native-v12"
 ROOT = Path(__file__).resolve().parents[1]
 SERVICE_TEMP_ROOT = Path(os.environ.get("BIMA_SAM31_TEMP_ROOT", Path(tempfile.gettempdir()) / f"bima-sam31-service-{PORT}"))
@@ -72,6 +77,7 @@ RESULT_TTL_SECONDS = max(60, int(os.environ.get("BIMA_SAM31_RESULT_TTL_SECONDS",
 MAX_VIDEO_RESULTS = max(1, int(os.environ.get("BIMA_SAM31_MAX_RESULTS", "8")))
 CHUNK_WORKER_PATH = Path(os.environ.get("BIMA_SAM31_CHUNK_WORKER", Path(__file__).with_name("sam31_chunk_worker.py")))
 CHUNK_WORKER_TIMEOUT_SECONDS = max(1, int(os.environ.get("BIMA_SAM31_WORKER_TIMEOUT_SECONDS", "600")))
+CHUNKS_PER_WORKER = max(1, int(os.environ.get("BIMA_SAM31_CHUNKS_PER_WORKER", "64")))
 VIDEO_ENCODER = os.environ.get("BIMA_SAM31_VIDEO_ENCODER", "h264_nvenc")
 
 
@@ -760,34 +766,89 @@ def _run_full_video_job(job_id: str, source_path: Path, job_dir: Path) -> None:
 
             processed = 0
             chunk_result_paths: list[Path] = []
-            for chunk_number, (chunk_path, expected_chunk_frames) in enumerate(zip(chunk_paths, chunk_counts), start=1):
+            use_persistent_worker = (
+                CHUNK_WORKER_PATH.resolve() == Path(__file__).with_name("sam31_chunk_worker.py").resolve()
+                or os.environ.get("BIMA_SAM31_PERSISTENT_WORKER") == "1"
+            )
+            chunk_number = 1
+            while chunk_number <= len(chunk_paths):
+                if use_persistent_worker:
+                    group_end = min(len(chunk_paths), chunk_number + CHUNKS_PER_WORKER - 1)
+                    group_entries = []
+                    for index in range(chunk_number - 1, group_end):
+                        result_path = job_dir / f"chunk-{index + 1:05d}-masks.json"
+                        group_entries.append({"source": str(chunk_paths[index]), "destination": str(result_path)})
+                    manifest_path = job_dir / f"worker-{chunk_number:05d}-{group_end:05d}.json"
+                    manifest_path.write_text(json.dumps(group_entries), encoding="utf-8")
+                    worker_command = [sys.executable, str(CHUNK_WORKER_PATH), "--manifest", str(manifest_path)]
+                    group_label = f"chunks {chunk_number}-{group_end}/{len(chunk_paths)}"
+                else:
+                    group_end = chunk_number
+                    result_path = job_dir / f"chunk-{chunk_number:05d}-masks.json"
+                    worker_command = [sys.executable, str(CHUNK_WORKER_PATH), str(chunk_paths[chunk_number - 1]), str(result_path)]
+                    group_label = f"chunk {chunk_number}/{len(chunk_paths)}"
+
                 job.update({"phase": f"tracking-chunk-{chunk_number}-of-{len(chunk_paths)}", "chunk": chunk_number})
-                chunk_result_path = job_dir / f"chunk-{chunk_number:05d}-masks.json"
+                group_started = time.monotonic()
+                worker_log_path = job_dir / f"worker-{chunk_number:05d}-{group_end:05d}.log"
+                worker_log = worker_log_path.open("wb")
+                worker = subprocess.Popen(
+                    worker_command,
+                    stdout=subprocess.DEVNULL,
+                    stderr=worker_log,
+                    env={
+                        **os.environ,
+                        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
+                        "CUDA_MODULE_LOADING": "LAZY",
+                        "BIMA_SAM31_GPU_MEMORY_FRACTION": str(GPU_MEMORY_FRACTION),
+                    },
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                )
+                next_result = chunk_number
+                job.update({"phase": f"tracking-chunk-{chunk_number}-of-{len(chunk_paths)}", "chunk": chunk_number})
                 try:
-                    worker = subprocess.run(
-                        [sys.executable, str(CHUNK_WORKER_PATH), str(chunk_path), str(chunk_result_path)],
-                        capture_output=True,
-                        timeout=CHUNK_WORKER_TIMEOUT_SECONDS,
-                        env={
-                            **os.environ,
-                            "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
-                            "CUDA_MODULE_LOADING": "LAZY",
-                            "BIMA_SAM31_GPU_MEMORY_FRACTION": str(GPU_MEMORY_FRACTION),
-                        },
-                        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-                    )
-                except subprocess.TimeoutExpired as exc:
-                    raise RuntimeError(f"SAM chunk {chunk_number}/{len(chunk_paths)} timed out after {CHUNK_WORKER_TIMEOUT_SECONDS} seconds and was terminated.") from exc
-                if worker.returncode != 0 or not chunk_result_path.is_file():
-                    details = worker.stderr.decode(errors="replace").strip()
-                    raise RuntimeError(f"SAM chunk {chunk_number}/{len(chunk_paths)} failed in its isolated GPU worker: {details[-3000:]}")
-                tracked = {int(index): instances for index, instances in json.loads(chunk_result_path.read_text(encoding="utf-8")).items()}
-                if len(tracked) != expected_chunk_frames:
-                    raise RuntimeError(f"SAM chunk {chunk_number} returned incomplete tracking ({len(tracked)}/{expected_chunk_frames} frames).")
-                chunk_result_paths.append(chunk_result_path)
-                processed += len(tracked)
-                job.update({"processedFrames": processed, "progress": min(84, 6 + round(78 * processed / max(1, frame_count)))})
-                print(f"[sam31-full] job={job_id} chunk={chunk_number}/{len(chunk_paths)} tracking complete", flush=True)
+                    while worker.poll() is None:
+                        while next_result <= group_end:
+                            ready_path = job_dir / f"chunk-{next_result:05d}-masks.json"
+                            if not ready_path.is_file():
+                                break
+                            expected = chunk_counts[next_result - 1]
+                            tracked = {int(index): instances for index, instances in json.loads(ready_path.read_text(encoding="utf-8")).items()}
+                            if len(tracked) != expected:
+                                raise RuntimeError(f"SAM chunk {next_result} returned incomplete tracking ({len(tracked)}/{expected} frames).")
+                            chunk_result_paths.append(ready_path)
+                            processed += len(tracked)
+                            job.update({"phase": f"tracking-chunk-{next_result + 1}-of-{len(chunk_paths)}" if next_result < len(chunk_paths) else "finishing-tracking", "chunk": next_result, "processedFrames": processed, "progress": min(84, 6 + round(78 * processed / max(1, frame_count)))})
+                            print(f"[sam31-full] job={job_id} chunk={next_result}/{len(chunk_paths)} tracking complete", flush=True)
+                            next_result += 1
+                            group_started = time.monotonic()
+                        if time.monotonic() - group_started > CHUNK_WORKER_TIMEOUT_SECONDS:
+                            worker.kill()
+                            raise RuntimeError(f"SAM {group_label} timed out after {CHUNK_WORKER_TIMEOUT_SECONDS} seconds and was terminated without completing another chunk.")
+                        time.sleep(0.1)
+                    worker.wait(timeout=5)
+                finally:
+                    if worker.poll() is None:
+                        worker.kill()
+                        worker.wait(timeout=5)
+                    worker_log.close()
+                details = worker_log_path.read_text(encoding="utf-8", errors="replace").strip()
+                if worker.returncode != 0:
+                    raise RuntimeError(f"SAM {group_label} failed in its bounded GPU worker: {details[-3000:]}")
+                while next_result <= group_end:
+                    ready_path = job_dir / f"chunk-{next_result:05d}-masks.json"
+                    if not ready_path.is_file():
+                        raise RuntimeError(f"SAM {group_label} exited without producing chunk {next_result}.")
+                    expected = chunk_counts[next_result - 1]
+                    tracked = {int(index): instances for index, instances in json.loads(ready_path.read_text(encoding="utf-8")).items()}
+                    if len(tracked) != expected:
+                        raise RuntimeError(f"SAM chunk {next_result} returned incomplete tracking ({len(tracked)}/{expected} frames).")
+                    chunk_result_paths.append(ready_path)
+                    processed += len(tracked)
+                    job.update({"processedFrames": processed, "progress": min(84, 6 + round(78 * processed / max(1, frame_count)))})
+                    print(f"[sam31-full] job={job_id} chunk={next_result}/{len(chunk_paths)} tracking complete", flush=True)
+                    next_result += 1
+                chunk_number = group_end + 1
 
             # Only after every CUDA worker has exited do we initialize OpenCV
             # and the final encoder in the parent process. This prevents parent
@@ -1142,14 +1203,20 @@ class Handler(BaseHTTPRequestHandler):
 
     def _origin_allowed(self) -> bool:
         origin = self.headers.get("Origin")
-        return origin is None or origin.rstrip("/") == APP_ORIGIN
+        return origin is None or origin.rstrip("/") in APP_ORIGINS
+
+    def _response_origin(self) -> str:
+        origin = self.headers.get("Origin")
+        if origin and origin.rstrip("/") in APP_ORIGINS:
+            return origin.rstrip("/")
+        return APP_ORIGIN
 
     def _headers(self, status: int = 200, content_type: str = "application/json", content_length: int | None = None) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         if content_length is not None:
             self.send_header("Content-Length", str(content_length))
-        self.send_header("Access-Control-Allow-Origin", APP_ORIGIN)
+        self.send_header("Access-Control-Allow-Origin", self._response_origin())
         self.send_header("Vary", "Origin")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, X-BIMA-Landmarks-Length")

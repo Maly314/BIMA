@@ -7,6 +7,7 @@ released by the OS before the next chunk begins.
 
 from __future__ import annotations
 
+import gc
 import json
 import os
 import sys
@@ -24,6 +25,52 @@ from sam31_service import OUTPUT_PROB_THRESH, _load_model, _native_instances
 from sam31_worker_retry import retry_transient_video_open
 
 
+def _process_chunk(predictor, torch, source: Path, destination: Path) -> None:
+    session_id = str(uuid.uuid4())
+    try:
+        with torch.inference_mode(), torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+            state = retry_transient_video_open(
+                lambda: predictor.model.init_state(
+                    resource_path=str(source),
+                    offload_video_to_cpu=True,
+                    async_loading_frames=False,
+                )
+            )
+            now = time.time()
+            predictor._all_inference_states[session_id] = {
+                "state": state,
+                "session_id": session_id,
+                "start_time": now,
+                "last_use_time": now,
+            }
+            prompted = predictor.handle_request(
+                {
+                    "type": "add_prompt",
+                    "session_id": session_id,
+                    "frame_index": 0,
+                    "text": "human hand",
+                    "output_prob_thresh": OUTPUT_PROB_THRESH,
+                }
+            )
+            tracked = {str(int(prompted["frame_index"])): _native_instances(prompted["outputs"])}
+            for response in predictor.handle_stream_request(
+                {
+                    "type": "propagate_in_video",
+                    "session_id": session_id,
+                    "propagation_direction": "forward",
+                    "output_prob_thresh": OUTPUT_PROB_THRESH,
+                }
+            ):
+                tracked[str(int(response["frame_index"]))] = _native_instances(response["outputs"])
+        temporary = destination.with_suffix(destination.suffix + ".tmp")
+        temporary.write_text(json.dumps(tracked), encoding="utf-8")
+        temporary.replace(destination)
+    finally:
+        if session_id in predictor._all_inference_states:
+            predictor.handle_request({"type": "close_session", "session_id": session_id, "run_gc_collect": False})
+        gc.collect()
+
+
 def main() -> int:
     if len(sys.argv) == 2 and sys.argv[1] == "--resource-policy":
         print(json.dumps({
@@ -32,10 +79,12 @@ def main() -> int:
             "cudaModuleLoading": os.environ["CUDA_MODULE_LOADING"],
         }))
         return 0
-    if len(sys.argv) != 3:
-        raise SystemExit("usage: sam31_chunk_worker.py INPUT_VIDEO OUTPUT_JSON")
-    source = Path(sys.argv[1])
-    destination = Path(sys.argv[2])
+    if len(sys.argv) == 3 and sys.argv[1] == "--manifest":
+        entries = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+    elif len(sys.argv) == 3:
+        entries = [{"source": sys.argv[1], "destination": sys.argv[2]}]
+    else:
+        raise SystemExit("usage: sam31_chunk_worker.py INPUT_VIDEO OUTPUT_JSON | --manifest MANIFEST_JSON")
 
     import torch
 
@@ -45,42 +94,8 @@ def main() -> int:
         # of evicting the desktop renderer into a permanent white window.
         torch.cuda.set_per_process_memory_fraction(GPU_MEMORY_FRACTION, device=0)
     predictor = _load_model()
-    session_id = str(uuid.uuid4())
-    with torch.inference_mode(), torch.autocast(device_type="cuda", dtype=torch.bfloat16):
-        state = retry_transient_video_open(
-            lambda: predictor.model.init_state(
-                resource_path=str(source),
-                offload_video_to_cpu=True,
-                async_loading_frames=False,
-            )
-        )
-        now = time.time()
-        predictor._all_inference_states[session_id] = {
-            "state": state,
-            "session_id": session_id,
-            "start_time": now,
-            "last_use_time": now,
-        }
-        prompted = predictor.handle_request(
-            {
-                "type": "add_prompt",
-                "session_id": session_id,
-                "frame_index": 0,
-                "text": "human hand",
-                "output_prob_thresh": OUTPUT_PROB_THRESH,
-            }
-        )
-        tracked = {str(int(prompted["frame_index"])): _native_instances(prompted["outputs"])}
-        for response in predictor.handle_stream_request(
-            {
-                "type": "propagate_in_video",
-                "session_id": session_id,
-                "propagation_direction": "forward",
-                "output_prob_thresh": OUTPUT_PROB_THRESH,
-            }
-        ):
-            tracked[str(int(response["frame_index"]))] = _native_instances(response["outputs"])
-    destination.write_text(json.dumps(tracked), encoding="utf-8")
+    for entry in entries:
+        _process_chunk(predictor, torch, Path(entry["source"]), Path(entry["destination"]))
     return 0
 
 

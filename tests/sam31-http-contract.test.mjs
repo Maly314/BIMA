@@ -14,11 +14,11 @@ async function freePort() {
   });
 }
 
-async function startService(t) {
+async function startService(t, extraEnv = {}) {
   const port = await freePort();
   const child = spawn("python", ["desktop/sam31_service.py"], {
     cwd: new URL("..", import.meta.url),
-    env: { ...process.env, BIMA_SAM31_PORT: String(port) },
+    env: { ...process.env, BIMA_SAM31_PORT: String(port), ...extraEnv },
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
   });
@@ -79,4 +79,18 @@ test("SAM service rejects hostile browser origins while allowing the desktop app
   const desktop = await fetch(`http://127.0.0.1:${port}/health`, { headers: { origin: "http://127.0.0.1:4820" } });
   assert.equal(desktop.status, 200);
   assert.equal(desktop.headers.get("access-control-allow-origin"), "http://127.0.0.1:4820");
+});
+
+test("SAM service can authorize exact local preview origins without using wildcard CORS", async (t) => {
+  const { port } = await startService(t, {
+    BIMA_APP_ORIGIN: "http://127.0.0.1:4820",
+    BIMA_APP_ORIGINS: "http://127.0.0.1:4820,http://localhost:4822",
+  });
+  const preview = await fetch(`http://127.0.0.1:${port}/health`, { headers: { origin: "http://localhost:4822" } });
+  assert.equal(preview.status, 200);
+  assert.equal(preview.headers.get("access-control-allow-origin"), "http://localhost:4822");
+
+  const lookalike = await fetch(`http://127.0.0.1:${port}/health`, { headers: { origin: "http://localhost:48220" } });
+  assert.equal(lookalike.status, 403);
+  assert.notEqual(lookalike.headers.get("access-control-allow-origin"), "*");
 });

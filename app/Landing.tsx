@@ -8,18 +8,22 @@ import { CALIBRATION_CAPTURE_MS, CALIBRATION_SETTLE_MS, INVALID_RE, buildCalibra
 import BrandLockup from "./BrandLockup";
 import { markInterruptedSam31Recordings, recoverSam31Recording } from "./sam31-recovery";
 import { archiveCaptureSession, archiveRecording, chooseStorageFolder, getStorageInfo, type StorageInfo } from "./desktop-storage";
+import { alignmentFilename, buildFrameSensorAlignmentCsv } from "./alignment-export";
 
 function formatDate(ms: number) {
   return new Date(ms).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
-function RecordingCard({ recording, onDelete }: { recording: Recording; onDelete: (id: string) => void }) {
+function RecordingCard({ recording, pairedVideo, onDelete }: { recording: Recording; pairedVideo?: Recording; onDelete: (id: string) => void }) {
   const kindLabel = recording.kind === "pose" ? "Pose" : recording.kind === "video" ? "Video" : "Sensor";
   const download = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = filename; document.body.appendChild(a); a.click();
     a.remove(); URL.revokeObjectURL(url);
+  };
+  const downloadCombined = async () => {
+    if (pairedVideo) download(await buildFrameSensorAlignmentCsv(recording, pairedVideo), alignmentFilename(recording));
   };
   return (
     <div className="rec-card">
@@ -37,6 +41,7 @@ function RecordingCard({ recording, onDelete }: { recording: Recording; onDelete
         <button type="button" onClick={() => download(recording.blob, recording.filename)}>{recording.annotationStatus === "failed" || recording.filename.endsWith("-sam31-raw.webm") ? "Raw video" : recording.rawBlob ? "Annotated video" : recording.kind === "pose" ? "Pose video" : recording.kind === "video" ? "Video" : "Download"}</button>
         {recording.rawBlob && recording.rawFilename && <button type="button" onClick={() => download(recording.rawBlob!, recording.rawFilename!)}>Raw video</button>}
         {recording.sidecarBlob && recording.sidecarFilename && <button type="button" onClick={() => download(recording.sidecarBlob!, recording.sidecarFilename!)}>{recording.kind === "sensor" ? "Analysis CSV" : "Tracking data"}</button>}
+        {recording.kind === "sensor" && pairedVideo?.sidecarBlob && <button type="button" onClick={downloadCombined}>Combined data</button>}
       </div>
     </div>
   );
@@ -344,7 +349,7 @@ export default function Landing({ onStart }: { onStart: (session: Session) => vo
           : weekKeys.map((w) => (
             <div className="rec-group" key={w}>
               <div className="rec-group-title">{w}–{w + 1} {groups.get(w)!.some((recording) => recording.correctedAgeDays != null) ? "corrected weeks" : "weeks"}</div>
-              <div className="rec-grid">{groups.get(w)!.map((r) => <RecordingCard key={r.id} recording={r} onDelete={setConfirmId} />)}</div>
+              <div className="rec-grid">{groups.get(w)!.map((r) => <RecordingCard key={r.id} recording={r} pairedVideo={r.kind === "sensor" ? recordings.find((candidate) => candidate.captureSessionId === r.captureSessionId && candidate.kind === "pose") : undefined} onDelete={setConfirmId} />)}</div>
             </div>
           ))}
       </div>

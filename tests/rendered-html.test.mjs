@@ -106,7 +106,7 @@ test("hand capture includes synchronized hand, sensor, and privacy-preserving re
   assert.match(page, /Download annotated video/);
   assert.match(page, /Download raw video/);
   assert.match(page, /Download tracking data/);
-  assert.match(page, />SAM 3\.1</);
+  assert.doesNotMatch(videoView, />SAM 3\.1</);
   assert.match(page, /stopInferencePipeline\(\)/);
   assert.match(page, /workerRef\.current\?\.terminate\(\)/);
   assert.match(page, /samRequestAbortRef\.current\?\.abort\(\)/);
@@ -127,8 +127,8 @@ test("hand capture includes synchronized hand, sensor, and privacy-preserving re
   assert.match(page, /annotationStatus:"processing"/);
   assert.match(page, /await addRecording\(provisionalSamRecording\)/);
   assert.match(page, /if \(savedMode === "sam31"\)[\s\S]*?videoRef\.current\.srcObject = null/);
-  assert.match(videoView, /recordingRef\.current \|\| videoProcessing/);
-  assert.equal((videoView.match(/disabled=\{recording \|\| videoProcessing\}/g) ?? []).length, 2);
+  assert.doesNotMatch(videoView, /inference-mode-switch/);
+  assert.equal((videoView.match(/disabled=\{recording \|\| videoProcessing\}/g) ?? []).length, 0);
   assert.match(videoView, /onSaved\("pose", !annotationFailed\)/);
   assert.match(videoView, /streamRef\.current\?\.getTracks\(\)\.forEach\(\(track\)=>track\.stop\(\)\)/);
   assert.match(page, /samJobId, samPipelineVersion:"sam31-native-v12"/);

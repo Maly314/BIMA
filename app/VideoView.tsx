@@ -800,36 +800,6 @@ export default function VideoView({ session, captureRun, onReadyChange, onSaved,
       await startPoseWorkerRef.current();
     }
   };
-  const selectInferenceMode = async (mode: InferenceMode) => {
-    if (mode === inferenceModeRef.current || recordingRef.current || videoProcessing) return;
-    stopInferencePipeline();
-    inferenceModeRef.current = mode;
-    setInferenceMode(mode);
-    setHands(0);
-    setFraming("waiting");
-    setTrackingFps(0);
-    setInferenceMs(0);
-    setTrackingLatencyMs(0);
-    const ctx = canvasRef.current?.getContext("2d");
-    if (ctx && canvasRef.current) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-    if (cameraStateRef.current !== "ready") {
-      setModelState("idle");
-      setStatus("Camera is off");
-      return;
-    }
-    setModelState("loading");
-    setStatus(mode === "sam31" ? "Switching to experimental SAM 3.1…" : "Switching to hand pose…");
-    try {
-      await startSelectedInference(mode);
-      if (mode === "pose") setStatus("Camera connected · hand pose active");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Inference could not start";
-      setModelState("error");
-      setModelError(message);
-      setStatus(mode === "sam31" ? "SAM 3.1 unavailable" : "Hand pose unavailable");
-    }
-  };
-
   // Watchdog: results should arrive continuously. Three silent seconds means the
   // worker died or wedged — replace it wholesale. The camera stream lives on
   // the main thread, so a fresh clone of the track restarts frame delivery.
@@ -1091,16 +1061,12 @@ export default function VideoView({ session, captureRun, onReadyChange, onSaved,
         <video ref={videoRef} muted playsInline aria-hidden="true" />
         <canvas ref={canvasRef} />
         <canvas ref={poseCanvasRef} className="pose-recording-canvas" aria-hidden="true" />
-        {cameraState !== "ready" && <div className="camera-empty"><div className="camera-outline" /><h2>Video movement capture</h2><p>Choose an inference mode, then enable the camera.</p><button className="enable-camera" type="button" onClick={enableCamera} disabled={cameraState==="starting"}>{cameraState==="starting" ? "Starting…" : "Enable camera"}</button></div>}
+        {cameraState !== "ready" && <div className="camera-empty"><div className="camera-outline" /><h2>Video movement capture</h2><p>Enable the camera to begin hand tracking.</p><button className="enable-camera" type="button" onClick={enableCamera} disabled={cameraState==="starting"}>{cameraState==="starting" ? "Starting…" : "Enable camera"}</button></div>}
         {cameraState === "ready" && <div className="tracking-badge"><span className={`live-dot ${modelState === "error" ? "error" : ""}`} />{modelState === "loading" ? "Loading model" : modelState === "error" ? "Inference unavailable" : framing === "ready" ? "Hands in frame" : framing === "partial" ? "Keep hands fully in view" : "Looking for hands"}</div>}
         {cameraState === "ready" && inferenceMode === "pose" && <div className="overlay-key"><span><i className="hand-key" />Stable pose</span><span><i className="raw-key" />Raw landmarks</span></div>}
         {cameraState === "ready" && inferenceMode === "sam31" && <div className="overlay-key"><span><i className="raw-key" />SAM hand mask</span><span><i className="hand-key" />Second mask</span></div>}
       </div>
       <aside className="video-panel">
-        <div className="inference-mode-switch" role="group" aria-label="Video inference model">
-          <button type="button" className={inferenceMode === "pose" ? "active" : ""} aria-pressed={inferenceMode === "pose"} disabled={recording || videoProcessing} onClick={() => void selectInferenceMode("pose")}>Hand pose</button>
-          <button type="button" className={inferenceMode === "sam31" ? "active experimental" : "experimental"} aria-pressed={inferenceMode === "sam31"} disabled={recording || videoProcessing} onClick={() => void selectInferenceMode("sam31")}><span>Experimental</span>SAM 3.1</button>
-        </div>
         {inferenceMode === "sam31" && <button type="button" className={`sam-record-button ${videoOnlyRun?.active ? "recording" : ""}`} onClick={() => videoOnlyRun?.active ? stopVideoOnlyRecording() : void startVideoOnlyRecording()} disabled={videoProcessing || (!!captureRun && !videoOnlyRun?.active) || cameraState === "starting"}>{videoOnlyRun?.active ? "Stop video" : videoProcessing ? "Processing video…" : "Record video"}</button>}
         <div><span className="eyebrow">{inferenceMode === "sam31" ? "Segmentation tracking" : "Hand tracking"}</span><h2>Hand movement</h2><p>{inferenceMode === "sam31" ? "Live preview is optional. Record the smooth camera video first; SAM 3.1 analyzes it afterward into hand masks, boxes, and centroids." : "The yellow skeleton is stabilized for viewing. Cyan dots show each unsmoothed measurement; recording saves those raw timestamped landmarks."}</p></div>
         {modelError && inferenceMode === "sam31" && <div className="model-error" role="alert">{modelError}</div>}

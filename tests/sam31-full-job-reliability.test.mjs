@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync } from "node:fs";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -163,4 +163,20 @@ test("completed SAM results are bounded and old patient-video temp data is evict
   assert.equal((await fetch(`http://127.0.0.1:${service.port}/result/${jobIds[1]}/metadata`)).status, 200);
   assert.equal((await fetch(`http://127.0.0.1:${service.port}/result/${jobIds[2]}/metadata`)).status, 200);
   assert.equal(readdirSync(service.tempRoot).length, 2);
+});
+
+test("persistent mode reuses one worker across multiple bounded video chunks", async (t) => {
+  const markerRoot = mkdtempSync(path.join(os.tmpdir(), "bima-sam-persistent-"));
+  const invocationLog = path.join(markerRoot, "worker-invocations.log");
+  const service = await startService(t, {
+    BIMA_SAM31_PERSISTENT_WORKER: "1",
+    BIMA_SAM31_CHUNKS_PER_WORKER: "64",
+    BIMA_FAKE_WORKER_INVOCATION_LOG: invocationLog,
+  });
+  const input = makeVideo(markerRoot);
+  const job = await startJob(service.port, input);
+  const completed = await waitForJob(service.port, job.jobId);
+  assert.equal(completed.status, "complete", service.logs());
+  assert.equal(completed.processedFrames, 8);
+  assert.equal(readFileSync(invocationLog, "utf8").trim().split(/\r?\n/).length, 1);
 });
